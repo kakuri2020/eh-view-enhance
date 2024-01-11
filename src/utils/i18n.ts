@@ -67,6 +67,8 @@ export const i18n = {
   fetchOriginalTooltip: new I18nValue("enable will download the original source, cost more traffic and quotas", "启用后，将加载未经过压缩的原档文件，下载打包后的体积也与画廊所标体积一致。<br>注意：这将消耗更多的流量与配额，请酌情启用。"),
   forceDownload: new I18nValue("Take Loaded", "获取已下载的"),
   downloadStart: new I18nValue("Start Download", "开始下载"),
+  downloadRangeStart: new I18nValue("Download Range begin this page", "从此页开始"),
+  downloadRangeUntil: new I18nValue("Start Download until this page", "开始下载此页之前的内容"),
   downloading: new I18nValue("Downloading...", "下载中..."),
   downloadFailed: new I18nValue("Failed(Retry)", "下载失败(重试)"),
   downloaded: new I18nValue("Downloaded", "下载完成"),
@@ -75,6 +77,7 @@ export const i18n = {
   reversePagesTooltip: new I18nValue("Clicking on the side navigation, if enable then reverse paging, which is a reading style similar to Japanese manga where pages are read from right to left.", "点击侧边导航时，是否反向翻页，反向翻页类似日本漫画那样的从右到左的阅读方式。"),
   autoCollapsePanel: new I18nValue("Auto Fold Control Panel", "自动收起控制面板"),
   autoCollapsePanelTooltip: new I18nValue("When the mouse is moved out of the control panel, the control panel will automatically fold. If disabled, the display of the control panel can only be toggled through the button on the control bar.", "当鼠标移出控制面板时，自动收起控制面板。禁用此选项后，只能通过控制栏上的按钮切换控制面板的显示。"),
+  enableDownloadRange: new I18nValue("Enable download range", "允许下载范围内的图片"),
   disableCssAnimation: new I18nValue("Disable Animation", "禁用动画"),
   disableCssAnimationTooltip: new I18nValue("Valid after refreshing the page", "刷新页面后生效"),
   stickyMouse: new I18nValue("Sticky Mouse", "黏糊糊鼠标"),
@@ -121,6 +124,7 @@ export const i18n = {
         </table>
       </li>
       <li><strong style="color: orange">Download:</strong>You can click on the download button in the download panel to quickly load all the images. You can still continue browsing the images. Downloading and viewing large images are integrated, and you can click on Download Loaded in the download panel to save the images at any time.</li>
+      <li><strong style="color: orange">Download in range:</strong>Used to ignore some images, you should open big image mode first and go to the first image you want, client"Download Range begin this page", and select the latest image you want, click "Start Download until this page". For example, if you want to ignore the latest some ad. images, just select the last image you want in big image mode and click "Start Download until this page"</li>
       <li><strong style="color: orange">Feedback:</strong>
         Click 
         <span>
@@ -153,6 +157,7 @@ export const i18n = {
         </table>
       </li>
       <li><strong style="color: orange">下载功能:</strong>你可以在下载面板中点击下载，这将快速加载所有的图片，你依旧可以继续浏览图片。下载与大图浏览是一体的，你随时可以在下载面板点击<strong style="color: orange">下载已加载的</strong>保存图片。</li>
+      <li><strong style="color: orange">下载区间内的内容:</strong>需要从菜单中打开，可以只下载指定的若干张图片，首先需要你打开大图模式点击第一张想要下载的图片，点击"从此页开始下载"，随后选择最后一张想要下载的图片，点击"开始下载此页之前的内容"。例如屏蔽最后几张广告只需要，点击最后一张想下载的大图，然后点击"开始下载此页之前的内容"</li>
       <li><strong style="color: orange">问题反馈:</strong>
         点击 
         <span>

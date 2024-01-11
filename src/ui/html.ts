@@ -55,6 +55,16 @@ export function createHTML() {
   fullViewGrid.classList.add("ehvp-root-collapse");
   document.body.after(fullViewGrid);
   const configItemStr = ConfigItems.map(createOption).join("");
+  const DOWNLOAD_RANGE_HTML = () => {
+    if (!conf.enableDownloadRange) return ""
+    return `
+            <div style="margin:7px 0">
+              <a id="download-range-start" style="color: rgb(0, 128, 255)" class="clickable">${i18n.downloadRangeStart.get()}</a>
+              <a id="download-range-until" style="color: rgb(0, 128, 255)" class="clickable">${i18n.downloadRangeUntil.get()}</a>
+            </div>
+    `
+  }
+
   const HTML_STRINGS = `
 <div id="page-loading" class="page-loading" style="display: none;">
     <div class="page-loading-text border-ani">Loading...</div>
@@ -100,6 +110,7 @@ export function createHTML() {
                <a id="download-force" style="color: gray;" class="clickable">${i18n.forceDownload.get()}</a>
                <a id="download-start" style="color: rgb(120, 240, 80)" class="clickable">${i18n.downloadStart.get()}</a>
             </div>
+            ${DOWNLOAD_RANGE_HTML()}
         </div>
     </div>
     <div id="b-main" class="b-main">
@@ -177,6 +188,8 @@ export function createHTML() {
     downloadBTNStart: q<HTMLAnchorElement>("#download-start", fullViewGrid),
     readModeSelect: q<HTMLDivElement>("#read-mode-select", fullViewGrid),
     paginationAdjustBar: q<HTMLDivElement>("#pagination-adjust-bar", fullViewGrid),
+    downloadRangeBTNStart: (conf.enableDownloadRange ? q<HTMLAnchorElement>("#download-range-start", fullViewGrid) : null),
+    downloadRangeBTNUntil: (conf.enableDownloadRange ? q<HTMLAnchorElement>("#download-range-until", fullViewGrid) : null),
     styleSheel,
   };
 }

@@ -2,6 +2,8 @@ import { Debouncer } from "./utils/debouncer";
 import { FetchState, IMGFetcher } from "./img-fetcher";
 import { Oriented, conf } from "./config";
 import EBUS from "./event-bus";
+import { DEFAULT_DOWNLOADSTART, DEFAULT_DOWNLOADUNTIL } from "./download/downloader";
+import { evLog } from "./utils/ev-log";
 
 export class IMGFetcherQueue extends Array<IMGFetcher> {
   executableQueue: number[];
@@ -48,8 +50,24 @@ export class IMGFetcherQueue extends Array<IMGFetcher> {
     this.debouncer = new Debouncer();
   }
 
-  isFinised() {
-    return this.finishedIndex.size === this.length;
+  // 0 - 3, 0 1 2
+  //-1 - 3, 0 1 2
+  isFinised(changed: boolean = false, start: number = DEFAULT_DOWNLOADSTART, until: number = DEFAULT_DOWNLOADUNTIL) {
+    if (!changed)
+      return this.finishedIndex.size === this.length;
+
+    evLog("debug", "isFinished", changed, start, until, this.length);
+    if (start < until) {
+      // (start, 0, 1, 2, xxx, until)
+      for (let i = start + 1; i < until && i <= this.length; i++) {
+        if (!this.finishedIndex.has(i)) {
+          return false;
+        }
+      }
+      return true;
+      // return Array.from({length: until - start}, (_, i) => i + start).every(num => this.finishedIndex.has(num));
+    }
+    return false;
   }
 
   do(start: number, oriented?: Oriented) {

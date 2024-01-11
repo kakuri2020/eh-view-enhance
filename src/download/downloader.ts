@@ -13,6 +13,8 @@ import { DownloaderCanvas } from "../ui/downloader-canvas";
 import { Chapter, PageFetcher } from "../page-fetcher";
 import { evLog } from "../utils/ev-log";
 
+export const DEFAULT_DOWNLOADSTART = -1;
+export const DEFAULT_DOWNLOADUNTIL = 0x7fffffff;
 const FILENAME_INVALIDCHAR = /[\\/:*?"<>|\n]/g;
 export class Downloader {
   meta: (ch: Chapter) => GalleryMeta;
@@ -20,6 +22,10 @@ export class Downloader {
   downloading: boolean;
   buttonForce: HTMLAnchorElement;
   buttonStart: HTMLAnchorElement;
+  buttonRangeStart: HTMLAnchorElement|null;
+  buttonRangeUntil: HTMLAnchorElement|null;
+  downloadStartIndex: number;
+  downloadUntilIndex: number;
   elementNotice: HTMLElement;
   downloaderPanelBTN: HTMLElement;
   queue: IMGFetcherQueue;
@@ -43,6 +49,10 @@ export class Downloader {
     this.downloading = false;
     this.buttonForce = HTML.downloadBTNForce;
     this.buttonStart = HTML.downloadBTNStart;
+    this.buttonRangeStart = HTML.downloadRangeBTNStart;
+    this.buttonRangeUntil = HTML.downloadRangeBTNUntil;
+    this.downloadStartIndex = DEFAULT_DOWNLOADSTART;
+    this.downloadUntilIndex = DEFAULT_DOWNLOADUNTIL;
     this.elementNotice = HTML.downloadNotice;
     this.downloaderPanelBTN = HTML.downloaderPanelBTN;
     this.buttonForce.addEventListener("click", () => this.download(this.pageFetcher.chapters));
@@ -50,9 +60,35 @@ export class Downloader {
       if (this.downloading) {
         this.abort("downloadStart");
       } else {
+        // reset range if click download
+        this.downloadStartIndex = DEFAULT_DOWNLOADSTART;
+        this.downloadUntilIndex = DEFAULT_DOWNLOADUNTIL;
+        (this.buttonRangeStart as HTMLAnchorElement).innerText = i18n.downloadRangeStart.get();
+        (this.buttonRangeUntil as HTMLAnchorElement).innerText = i18n.downloadRangeUntil.get();
         this.start();
       }
     });
+    this.buttonRangeStart?.addEventListener("click", () => {
+      // evLog("debug", "Set downloadStartIndex to ", queue.currIndex);
+      // [0 1 2 3 4]   index
+      //        |      currentIndex (first page you want download)
+      //      |        downloadStartIndex
+      // Download range (start, until)
+      evLog("debug", "Set downloadStartIndex to ", queue.currIndex - 1);
+      this.downloadStartIndex = queue.currIndex - 1;
+      (this.buttonRangeStart as HTMLAnchorElement).innerText = i18n.downloadRangeStart.get() + `(${this.downloadStartIndex+2})`;
+    });
+    this.buttonRangeUntil?.addEventListener("click", () => {
+      // [0 1 2 3 4]   index
+      //        |      currentIndex (last page you want download)
+      //          |    downloadUntilIndex
+      // Download range (start, until)
+      evLog("debug", "Set downloadUntilIndex to ", queue.currIndex + 1);
+      this.downloadUntilIndex = queue.currIndex + 1;
+      (this.buttonRangeUntil as HTMLAnchorElement).innerText = i18n.downloadRangeUntil.get() + `(${this.downloadUntilIndex})`;
+      this.start();
+    });
+    
     this.queue.downloading = () => this.downloading;
     this.dashboardTab = HTML.downloadTabDashboard;
     this.chapterTab = HTML.downloadTabChapters;
@@ -60,7 +96,7 @@ export class Downloader {
     this.elementChapters = HTML.downloadChapters;
     this.canvas = new DownloaderCanvas(HTML.downloaderCanvas, HTML, queue);
     EBUS.subscribe("ifq-on-finished-report", (_, queue) => {
-      if (queue.isFinised()) {
+      if (queue.isFinised(this.rangeChanged(), this.downloadStartIndex, this.downloadUntilIndex)) {
         const sel = this.selectedChapters.find(sel => sel.index === queue.chapterIndex);
         if (sel) {
           sel.done = true;
@@ -75,6 +111,11 @@ export class Downloader {
       }
     });
     this.initTabs();
+  }
+
+  rangeChanged() {
+    return this.downloadStartIndex != DEFAULT_DOWNLOADSTART 
+        || this.downloadUntilIndex != DEFAULT_DOWNLOADUNTIL;
   }
 
   initTabs() {
@@ -216,16 +257,49 @@ ${chapters.map((c, i) => `<div><label>
           sel.resolve(true);
         } else { // not yet done
           // find all of unloading imgFetcher and splice frist few imgFetchers
-          this.idleLoader.processingIndexList = this.queue.map((imgFetcher, index) => (!imgFetcher.lock && imgFetcher.stage === FetchState.URL ? index : -1))
-            .filter((index) => index >= 0)
-            .splice(0, conf.downloadThreads);
+          if (conf.enableDownloadRange && this.rangeChanged()) {
+            // all range, index and fetcher are match
+            let availableIndexList = this.queue.map((imgFetcher, index) => (!imgFetcher.lock && imgFetcher.stage === FetchState.URL ? index : -1));
+
+            // filter range first, or index and matcher will not match, because some matcher are filted
+            let inRangeFetcherIndexList = availableIndexList
+              .filter((index) => this.downloadStartIndex < index && index < this.downloadUntilIndex)
+              .filter((index) => index >= 0);
+            if (inRangeFetcherIndexList.length > 0) {
+              this.idleLoader.processingIndexList = inRangeFetcherIndexList.splice(0, conf.downloadThreads);
+            } else {
+              this.idleLoader.processingIndexList = availableIndexList
+                .filter((index) => index >= 0)
+                .splice(0, conf.downloadThreads);
+            }
+            if (this.downloadUntilIndex != DEFAULT_DOWNLOADUNTIL) {
+              // currIndex is reset by changeChapter, restore it
+              this.queue.currIndex = this.downloadUntilIndex - 1;
+            }
+          } else {
+            this.idleLoader.processingIndexList = this.queue.map((imgFetcher, index) => (!imgFetcher.lock && imgFetcher.stage === FetchState.URL ? index : -1))
+              .filter((index) => index >= 0)
+              .splice(0, conf.downloadThreads);
+          }
           this.idleLoader.onFailed(() => sel.reject("download failed or canceled"));
           this.idleLoader.start();
         }
         // wait all finished
         await sel.promise;
+        if (conf.enableDownloadRange && this.rangeChanged()) {
+          break;
+        }
       }
       if (this.downloading) await this.download(this.selectedChapters.filter(sel => sel.done).map(sel => this.pageFetcher.chapters[sel.index]));
+
+      if (conf.enableDownloadRange && this.rangeChanged()) {
+        // start load other images after downloading
+
+        this.idleLoader.processingIndexList = this.queue.map((imgFetcher, index) => (!imgFetcher.lock && imgFetcher.stage === FetchState.URL ? index : -1))
+            .filter((index) => index >= 0)
+            .splice(0, conf.threads);
+        this.idleLoader.start();
+      }
     } catch (error) {
       if ("abort" === error) return;
       this.abort("downloadFailed");
@@ -266,7 +340,9 @@ ${chapters.map((c, i) => `<div><label>
       }
     })();
 
+    // filter index first
     const ret = chapter.queue
+      .filter((_, index) => this.downloadStartIndex < index && index < this.downloadUntilIndex)
       .filter((imf) => imf.stage === FetchState.DONE && imf.data)
       .map((imf, index) => {
         return {

@@ -105,7 +105,7 @@ export class PageFetcher {
   // append next page until the queue length is 60 more than finished
   private async appendPages(appendedCount: number) {
     while (true) {
-      if (appendedCount + 60 < this.queue.length) break;
+      if (appendedCount + 200 < this.queue.length) break;
       if (!await this.appendNextPage()) break;
     }
   }

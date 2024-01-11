@@ -85,6 +85,8 @@ export type Config = {
   reverseMultipleImagesPost: boolean,
   /** Many galleries have both an English/Romanized title and a title in Japanese script. Which gallery name would you like as archive filename?  */
   ehentaiTitlePrefer: "english" | "japanese",
+  /** Show download range buttons in panel */
+  enableDownloadRange: boolean
 };
 
 function defaultConf(): Config {
@@ -131,6 +133,7 @@ function defaultConf(): Config {
     autoLoadInBackground: true,
     reverseMultipleImagesPost: true,
     ehentaiTitlePrefer: "japanese",
+    enableDownloadRange: false
   };
 }
 
@@ -209,7 +212,7 @@ export function saveConf(c: Config) {
 }
 
 export type ConfigNumberType = "colCount" | "threads" | "downloadThreads" | "timeout" | "autoPageInterval" | "preventScrollPageTime" | "paginationIMGCount";
-export type ConfigBooleanType = "fetchOriginal" | "autoLoad" | "reversePages" | "autoPlay" | "autoCollapsePanel" | "disableCssAnimation" | "autoOpen" | "autoLoadInBackground" | "reverseMultipleImagesPost";
+export type ConfigBooleanType = "fetchOriginal" | "autoLoad" | "reversePages" | "autoPlay" | "autoCollapsePanel" | "disableCssAnimation" | "autoOpen" | "autoLoadInBackground" | "reverseMultipleImagesPost" | "enableDownloadRange";
 export type ConfigSelectType = "readMode" | "stickyMouse" | "minifyPageHelper" | "hitomiFormat" | "ehentaiTitlePrefer";
 export const conf = getConf();
 
@@ -243,6 +246,7 @@ export const ConfigItems: ConfigItem[] = [
   { key: "autoOpen", typ: "boolean", gridColumnRange: [6, 11] },
   { key: "disableCssAnimation", typ: "boolean", gridColumnRange: [1, 11] },
   { key: "autoCollapsePanel", typ: "boolean", gridColumnRange: [1, 11] },
+  { key: "enableDownloadRange", typ: "boolean", gridColumnRange: [1, 11] },
   {
     key: "readMode", typ: "select", options: [
       { value: "pagination", display: "Pagination" },
