@@ -121,7 +121,7 @@ export class IdleLoader {
   async wait(): Promise<boolean> {
     const { maxWaitMS, minWaitMS } = this;
     return new Promise(function(resolve) {
-      const time = Math.floor(Math.random() * maxWaitMS + minWaitMS);
+      const time = Math.floor(minWaitMS + Math.random() * (maxWaitMS - minWaitMS));
       window.setTimeout(() => resolve(true), time);
     });
   }
