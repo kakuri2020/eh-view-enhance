@@ -26,7 +26,6 @@ export class Adapter {
   addSetup(setup: MatcherSetup) {
     this.matchers.push(setup);
     const siteConf = getSiteConfig(setup.name);
-    this.conf = { ...this.conf, ...siteConf };
     if (!(siteConf.enable ?? true)) {
       return;
     }
@@ -35,6 +34,7 @@ export class Adapter {
       workURLs = setup.workURLs;
     }
     if (workURLs.find(regex => regex.test(window.location.href))) {
+      this.conf = { ...this.conf, ...siteConf };
       this.matcher = setup;
       this.resolve?.(setup);
     }
