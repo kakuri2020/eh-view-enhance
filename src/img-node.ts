@@ -1,9 +1,9 @@
-import { conf } from "./config";
 import EBUS from "./event-bus";
 import { Tag } from "./filter";
 import { DownloadState } from "./img-fetcher";
 import { Debouncer } from "./utils/debouncer";
 import { resizing } from "./utils/image-resizing";
+import { ADAPTER } from "./platform/adapt";
 
 export const DEFAULT_THUMBNAIL = "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
 
@@ -117,7 +117,7 @@ export default class ImageNode {
     this.imgElement.setAttribute("title", this.title);
     this.canvasElement.id = "canvas-" + this.title.replaceAll(/[^\w]/g, "_");
 
-    const ratio = Math.max(conf.minRatio, this.ratio());
+    const ratio = Math.max(ADAPTER.conf.minRatio, this.ratio());
     this.root.style.aspectRatio = ratio.toString();
     this.root.setAttribute("data-ratio", ratio.toString());
     this.canvasElement.width = 512;
@@ -182,9 +182,9 @@ export default class ImageNode {
     this.imgElement.onload = null;
     this.imgElement.onerror = null;
 
-    const oldRatio = Math.max(conf.minRatio, this.ratio());
+    const oldRatio = Math.max(ADAPTER.conf.minRatio, this.ratio());
     this.rect = { w: this.imgElement.naturalWidth, h: this.imgElement.naturalHeight };
-    const newRatio = Math.max(conf.minRatio, this.ratio());
+    const newRatio = Math.max(ADAPTER.conf.minRatio, this.ratio());
 
     const flowVision = this.root.parentElement?.classList.contains("fvg-sub-container");
     // console.log("ratio diff: ", Math.abs(newRatio - oldRatio));
@@ -225,7 +225,7 @@ export default class ImageNode {
             0, 0,
             this.canvasElement!.width, this.canvasElement!.height) || ""));
       };
-      if (this.ratio() < conf.minRatio) {
+      if (this.ratio() < ADAPTER.conf.minRatio) {
         createImageBitmap(this.imgElement, 0, cropY, this.imgElement.naturalWidth, cropHeight).then(re);
       } else {
         re(this.imgElement);
@@ -243,7 +243,7 @@ export default class ImageNode {
   render(onfailed: Onfailed, onResize: OnResize, force?: boolean) {
     this.debouncer.addEvent("IMG-RENDER", () => {
       if (!this.imgElement) return onfailed("element undefined");
-      let justThumbnail = !force && (!conf.hdThumbnails || !this.blobSrc);
+      let justThumbnail = !force && (!ADAPTER.conf.hdThumbnails || !this.blobSrc);
       if (this.mimeType === "image/gif" || this.mimeType?.startsWith("video")) {
         const tip = OVERLAY_TIP.cloneNode(true);
         tip.firstChild!.textContent = this.mimeType.split("/")[1].toUpperCase();

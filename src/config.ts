@@ -1,20 +1,18 @@
 import { GM_getValue, GM_setValue } from "$";
 import { KeyboardInBigImageModeId, KeyboardInFullViewGridId, KeyboardInMainId } from "./ui/event";
 import { i18n } from "./utils/i18n";
-import icons from "./utils/icons";
-import { uuid } from "./utils/random";
+import { b64EncodeUnicode, uuid } from "./utils/random";
 
 export const IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
 
 export type Oriented = "prev" | "next";
 
 export type SiteProfile = {
-  enable: boolean,
-  enableAutoOpen: boolean,
-  enableFlowVision: boolean,
-  workURLs: string[],
+  enable?: boolean,
+  workURLs?: string[],
 }
 export type ReadMode = "pagination" | "continuous" | "horizontal";
+export type GridMode = "flow" | "grid";
 
 export type ImageActionDesc = {
   workon?: string,
@@ -30,6 +28,7 @@ export type Config = {
   rowHeight: number,
   /** 滚动换页 */
   readMode: ReadMode,
+  gridMode: GridMode,
   /** 是否启用空闲加载器 */
   autoLoad: boolean,
   /** 是否获取最佳质量的图片 */
@@ -86,14 +85,10 @@ export type Config = {
     inFullViewGrid: { [key in KeyboardInFullViewGridId]?: string[] },
     inMain: { [key in KeyboardInMainId]?: string[] },
   },
-  siteProfiles: Record<string, SiteProfile>,
   /** Is video muted? */
   muted?: boolean,
   /** Video volume, min 0, max 100 */
   volume?: number,
-  /** The feature of `multiple chapters` is enabled in a site */
-  mcInSites: string[],
-  /**  */
   paginationIMGCount: number,
   hitomiFormat: "auto" | "jxl" | "avif" | "webp",
   /** Automatically open after the page is loaded */
@@ -139,11 +134,12 @@ function defaultRowHeight() {
   return Math.floor(vh / 3.4);
 }
 
-function defaultConf(): Config {
+export function defaultConf(): Config {
   return {
     colCount: defaultColumns(),
     rowHeight: defaultRowHeight(),
     readMode: "pagination",
+    gridMode: "flow",
     autoLoad: true,
     fetchOriginal: false,
     restartIdleLoader: 2000,
@@ -170,10 +166,8 @@ function defaultConf(): Config {
     autoCollapsePanel: true,
     minifyPageHelper: IS_MOBILE ? "never" : "inBigMode",
     keyboards: { inBigImageMode: {}, inFullViewGrid: {}, inMain: {} },
-    siteProfiles: {},
     muted: false,
     volume: 50,
-    mcInSites: ["18comic"],
     paginationIMGCount: 1,
     hitomiFormat: "auto",
     autoOpen: false,
@@ -225,10 +219,12 @@ function getStorageMethod() {
 
 const storage = getStorageMethod();
 
-function getConf(): Config {
+type SiteConfig = Partial<Config> & SiteProfile;
+
+export function getConf(): Config {
   const cfgStr = storage.getItem(CONFIG_KEY);
   if (cfgStr) {
-    const cfg: Config = JSON.parse(cfgStr);
+    let cfg: Config = JSON.parse(cfgStr);
     if (cfg.version === CONF_VERSION) {
       return confHealthCheck(cfg);
     }
@@ -236,6 +232,12 @@ function getConf(): Config {
   const cfg = defaultConf();
   saveConf(cfg);
   return cfg;
+}
+
+export function getSiteConfig(name: string): SiteConfig {
+  const cfgStr = storage.getItem(getConfigKey(name));
+  if (!cfgStr) return {}
+  return JSON.parse(cfgStr);
 }
 
 function confHealthCheck(cf: Config): Config {
@@ -291,36 +293,48 @@ function confHealthCheck(cf: Config): Config {
 function patchConfig(cf: Config): Config | null {
   let changed = false;
   if (cf.configPatchVersion < 8) {
-    cf.siteProfiles = {};
     cf.configPatchVersion = 8;
     cf.colCount = defaultColumns();
     cf.keyboards = { inBigImageMode: {}, inFullViewGrid: {}, inMain: {} };
     changed = true;
   }
-  if (cf.configPatchVersion < 9) {
-    delete cf.siteProfiles["rule34"];
-    cf.configPatchVersion = 9;
-    changed = true;
-  }
   if (cf.configPatchVersion < 10) {
-    cf.customStyle = "";
     cf.configPatchVersion = 10;
-    changed = true;
-  }
-  if (cf.configPatchVersion < 11) {
-    cf.siteProfiles["colamanga"] = { enable: false, enableAutoOpen: true, enableFlowVision: true, workURLs: [] };
-    cf.configPatchVersion = 11;
+    cf.customStyle = "";
     changed = true;
   }
   return changed ? cf : null;
 }
 
-export function resetConf() {
-  if (confirm(i18n.resetConfig.get() + " ?")) saveConf(defaultConf());
+export function resetConf(name?: string) {
+  if (confirm(`${i18n.resetConfig.get()}${name ? ("in " + name) : ""} ?`)) {
+    if (name) {
+      storage.setItem(getConfigKey(name), "");
+    } else {
+      saveConf(defaultConf());
+    }
+  };
 }
-export function saveConf(c: Config) {
-  storage.setItem(CONFIG_KEY, JSON.stringify(c));
+export function saveConf(c: SiteConfig, name?: string) {
+  const configKey = getConfigKey(name);
+  const raw = storage.getItem(configKey);
+  const config = raw ? JSON.parse(raw) : {};
+  ["selectedSiteNameConfig"].forEach(key => delete config[key]);
+  if (name) {
+    ["keyboards", "siteProfiles"].forEach(key => delete config[key]);
+  }
+  storage.setItem(configKey, JSON.stringify({ ...config, ...c }));
 }
+
+function getConfigKey(name?: string) {
+  if (name) {
+    return CONFIG_KEY + b64EncodeUnicode(name).replaceAll(/[+=\/]/g, "-");
+  } else {
+    return CONFIG_KEY;
+  }
+}
+
+export const transient = { imgSrcCSP: false, originalPolicy: "" };
 
 export type ConfigNumberType = "colCount"
   | "rowHeight"
@@ -350,19 +364,19 @@ export type ConfigBooleanType = "fetchOriginal"
   | "excludeVideo"
   ;
 export type ConfigSelectType = "readMode"
+  | "gridMode"
   | "minifyPageHelper"
   | "hitomiFormat"
   | "ehentaiTitlePrefer"
   | "filenameOrder"
   ;
-export const conf = getConf();
-export const transient = { imgSrcCSP: false, originalPolicy: "" };
 
 type OptionValue = {
   value: string;
   display: string;
 }
 
+// config panel
 export type ConfigItem = {
   key: ConfigNumberType | ConfigBooleanType | ConfigSelectType;
   typ: "boolean" | "number" | "select";
@@ -406,6 +420,12 @@ export const ConfigItems: ConfigItem[] = [
     ]
   },
   {
+    key: "gridMode", typ: "select", options: [
+      { value: "grid", display: "Grid" },
+      { value: "flow", display: "Flow" },
+    ]
+  },
+  {
     key: "minifyPageHelper", typ: "select", options: [
       { value: "always", display: "Always" },
       { value: "inBigMode", display: "InBigMode" },
@@ -436,6 +456,7 @@ export const ConfigItems: ConfigItem[] = [
   },
 ];
 
+// custom page helper bar style
 export type DisplayText = {
   entry: string,
   collapse: string,
@@ -449,23 +470,4 @@ export type DisplayText = {
   pagination: string,
   continuous: string,
   horizontal: string,
-}
-
-const DEFAULT_DISPLAY_TEXT: DisplayText = {
-  entry: icons.moonViewCeremony,
-  collapse: i18n.collapse.get(),
-  fin: "FIN",
-  autoPagePlay: i18n.autoPagePlay.get(),
-  autoPagePause: i18n.autoPagePause.get(),
-  config: i18n.config.get(),
-  download: i18n.download.get(),
-  chapters: i18n.chapters.get(),
-  filter: i18n.filter.get(),
-  pagination: "PAGE",
-  continuous: "CONT",
-  horizontal: "HORI"
-};
-
-export function getDisplayText(): DisplayText {
-  return { ...DEFAULT_DISPLAY_TEXT, ...conf.displayText };
 }

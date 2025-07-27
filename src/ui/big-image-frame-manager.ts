@@ -1,4 +1,4 @@
-import { conf, IS_MOBILE, Oriented, saveConf } from "../config";
+import { IS_MOBILE, Oriented, saveConf } from "../config";
 import { FetchState, IMGFetcher } from "../img-fetcher";
 import { Debouncer } from "../utils/debouncer";
 import { sleep } from "../utils/sleep";
@@ -11,6 +11,7 @@ import queryCSSRules from "../utils/query-cssrules";
 import { Scroller } from "../utils/scroller";
 import { calculateDistance, TouchManager } from "../utils/touch";
 import { DEFAULT_THUMBNAIL } from "../img-node";
+import { ADAPTER } from "../platform/adapt";
 
 type MediaElement = HTMLImageElement | HTMLVideoElement;
 
@@ -51,7 +52,7 @@ export class BigImageFrameManager {
 
     this.container = document.createElement("div");
     this.container.classList.add("bifm-container");
-    switch (conf.readMode) {
+    switch (ADAPTER.conf.readMode) {
       case "continuous":
         this.container.classList.add("bifm-container-vert");
         break;
@@ -99,7 +100,7 @@ export class BigImageFrameManager {
 
     EBUS.subscribe("imf-download-state-change", (imf) => {
       if (imf.chapterIndex !== this.chapterIndex) return;
-      const [start, end] = [this.currentIndex, this.currentIndex + (conf.readMode !== "pagination" ? 1 : conf.paginationIMGCount)];
+      const [start, end] = [this.currentIndex, this.currentIndex + (ADAPTER.conf.readMode !== "pagination" ? 1 : ADAPTER.conf.paginationIMGCount)];
       if (imf.index < start || imf.index >= end) return;
       this.currLoadingState.set(imf.index, Math.floor(imf.downloadState.loaded / imf.downloadState.total * 100));
       this.debouncer.addEvent("FLUSH-LOADING-HELPER", () => this.flushLoadingHelper(), 20);
@@ -112,7 +113,7 @@ export class BigImageFrameManager {
     const element = this.container.querySelector<HTMLElement>(`div[d-index="${imf.index}"]`);
     const current = this.container.querySelector<HTMLElement>(`div[d-index="${this.currentIndex}"]`);
     if (!element || !current) return;
-    if (conf.readMode === "continuous") {
+    if (ADAPTER.conf.readMode === "continuous") {
       const currOffsetTop = current.offsetTop;
       const currScrollTop = this.root.scrollTop;
       element.style.aspectRatio = imf.ratio().toString();
@@ -123,7 +124,7 @@ export class BigImageFrameManager {
       const currOffsetLeft = current.offsetLeft;
       const currScrollLeft = this.root.scrollLeft;
       element.style.aspectRatio = imf.ratio().toString();
-      if (conf.readMode === "pagination" && imf.index === this.currentIndex) {
+      if (ADAPTER.conf.readMode === "pagination" && imf.index === this.currentIndex) {
         this.jumpTo(this.currentIndex);
       } else if (currOffsetLeft !== current.offsetLeft) {
         this.root.scrollLeft = current.offsetLeft - (currOffsetLeft - currScrollLeft);
@@ -158,12 +159,12 @@ export class BigImageFrameManager {
     const sorting = this.intersectingElements.map((elem) => ({ index: parseIndex(elem), elem }));
     // make sure intersectingElements in order in the document flow
     sorting.filter(e => e.index > -1).sort((a, b) => a.index - b.index);
-    if (conf.reversePages) sorting.reverse();
+    if (ADAPTER.conf.reversePages) sorting.reverse();
     const intersecting = sorting.map(e => e.elem);
     if (intersecting.length === 0) return;
     // extend the renderingElements array to pre-decode the image
     let sibling: HTMLElement | null = intersecting[0];
-    let [count, limit] = [0, conf.paginationIMGCount];
+    let [count, limit] = [0, ADAPTER.conf.paginationIMGCount];
     while ((sibling = sibling.previousElementSibling as HTMLElement | null) && count < limit) {
       intersecting.unshift(sibling);
       count++;
@@ -207,7 +208,7 @@ export class BigImageFrameManager {
   initEvent() {
     this.root.addEventListener("wheel", (event) => this.onWheel(
       new WheelEvent("wheel", {
-        deltaY: conf.scrollingDelta * (event.deltaY < 0 ? -1 : 1),
+        deltaY: ADAPTER.conf.scrollingDelta * (event.deltaY < 0 ? -1 : 1),
         buttons: event.buttons, button: event.button,
       }),
       undefined,
@@ -233,8 +234,8 @@ export class BigImageFrameManager {
         abort.abort();
         if (!moved) { // just click
           this.hidden(muevt);
-        } else if (conf.magnifier && conf.imgScale === 100) { // restore scale
-          this.scaleBigImages(1, 0, conf.imgScale, false);
+        } else if (ADAPTER.conf.magnifier && ADAPTER.conf.imgScale === 100) { // restore scale
+          this.scaleBigImages(1, 0, ADAPTER.conf.imgScale, false);
           [this.root.scrollTop, this.root.scrollLeft] = [scrollTop, scrollLeft];
         }
         moved = false;
@@ -242,7 +243,7 @@ export class BigImageFrameManager {
 
       // for mouse move, magnifier
       this.root.addEventListener("mousemove", (mmevt) => {
-        if (conf.dragImageOut) {
+        if (ADAPTER.conf.dragImageOut) {
           moved = true;
           return;
         };
@@ -252,11 +253,11 @@ export class BigImageFrameManager {
           const dist = calculateDistance(start, { x: mmevt.clientX, y: mmevt.clientY });
           if (dist < 20) return;
           // temporarily zoom if img not scale
-          if (conf.magnifier && conf.imgScale === 100) {
+          if (ADAPTER.conf.magnifier && ADAPTER.conf.imgScale === 100) {
             this.scaleBigImages(1, 0, 150, false);
           }
           // calculate current elements total width, for stickyMouse limit
-          if (conf.readMode === "pagination") {
+          if (ADAPTER.conf.readMode === "pagination") {
             const showing = this.intersectingElements;
             if (showing.length > 0) {
               elementsWidth = showing[showing.length - 1].offsetLeft + showing[showing.length - 1].offsetWidth - showing[0].offsetLeft;
@@ -273,17 +274,17 @@ export class BigImageFrameManager {
     // touch
     new TouchManager(this.root, {
       start: () => {
-        if (conf.readMode === "pagination") {
+        if (ADAPTER.conf.readMode === "pagination") {
           this.root.style.overflow = "hidden";
         }
       },
       swipe: (direction) => {
-        if (conf.readMode === "continuous" || conf.readMode === "horizontal") return;
+        if (ADAPTER.conf.readMode === "continuous" || ADAPTER.conf.readMode === "horizontal") return;
         // if (direction === "L" || direction === "R") return; // Disable horizontal swiping
         this.oriented = (() => {
           switch (direction) {
-            case "L": return conf.reversePages ? "next" : "prev";
-            case "R": return conf.reversePages ? "prev" : "next";
+            case "L": return ADAPTER.conf.reversePages ? "next" : "prev";
+            case "R": return ADAPTER.conf.reversePages ? "prev" : "next";
             case "U": return "next";
             case "D": return "prev";
           }
@@ -293,7 +294,7 @@ export class BigImageFrameManager {
         //   this.stepNext(this.oriented);
         // }
         this.stepNext(this.oriented);
-        if (conf.readMode === "pagination") {
+        if (ADAPTER.conf.readMode === "pagination") {
           this.root.style.overflow = "";
         }
       },
@@ -306,8 +307,8 @@ export class BigImageFrameManager {
 
   cherryPickCurrent(exclude: boolean) {
     EBUS.emit("add-cherry-pick-range", this.chapterIndex, this.currentIndex, !exclude, false);
-    const withRange = conf.readMode === "pagination" && conf.paginationIMGCount > 1;
-    const end = this.currentIndex + conf.paginationIMGCount - 1;
+    const withRange = ADAPTER.conf.readMode === "pagination" && ADAPTER.conf.paginationIMGCount > 1;
+    const end = this.currentIndex + ADAPTER.conf.paginationIMGCount - 1;
     if (withRange) {
       EBUS.emit("add-cherry-pick-range", this.chapterIndex, end, !exclude, true);
     }
@@ -368,7 +369,7 @@ export class BigImageFrameManager {
   }
 
   append(nodes: IMGFetcher[]) {
-    if (conf.readMode === "pagination") return;
+    if (ADAPTER.conf.readMode === "pagination") return;
     const elements = [];
     const scrollWidth = this.root.scrollWidth;
     for (const node of nodes) {
@@ -378,7 +379,7 @@ export class BigImageFrameManager {
       elements.push(div);
       this.observer.observe(div);
     }
-    const reverse = conf.readMode !== "continuous" && conf.reversePages;
+    const reverse = ADAPTER.conf.readMode !== "continuous" && ADAPTER.conf.reversePages;
     if (this.container.childElementCount === 0) {
       const paddingRatio = window.innerWidth / window.innerHeight;
       const start = document.createElement("div");
@@ -403,7 +404,7 @@ export class BigImageFrameManager {
 
   changeLayout() {
     this.resetScaleBigImages(true);
-    switch (conf.readMode) {
+    switch (ADAPTER.conf.readMode) {
       case "continuous":
         this.container.classList.remove("bifm-container-hori", "bifm-container-vert", "bifm-container-page");
         this.container.classList.add("bifm-container-vert");
@@ -426,11 +427,11 @@ export class BigImageFrameManager {
   }
 
   jumpTo(index: number) {
-    switch (conf.readMode) {
+    switch (ADAPTER.conf.readMode) {
       case "pagination": {
         const showing = this.setElements();
         if (this.container.offsetWidth > this.root.offsetWidth) {
-          if (conf.reversePages) {
+          if (ADAPTER.conf.reversePages) {
             this.root.scrollLeft = this.container.offsetWidth - this.root.offsetWidth;
           } else {
             this.root.scrollLeft = 0;
@@ -445,7 +446,7 @@ export class BigImageFrameManager {
       case "horizontal": {
         const element = this.container.querySelector<HTMLElement>(`div[d-index="${index}"]`);
         if (!element) return;
-        if (conf.reversePages) {
+        if (ADAPTER.conf.reversePages) {
           this.root.scrollLeft = element.offsetLeft - this.root.offsetWidth + element.offsetWidth;
         } else {
           this.root.scrollLeft = element.offsetLeft;
@@ -471,12 +472,12 @@ export class BigImageFrameManager {
     if (index === undefined || isNaN(index)) return;
     const queue = this.getChapter(this.chapterIndex)?.filteredQueue;
     if (!queue || queue.length === 0) return;
-    index = oriented === "next" ? index + conf.paginationIMGCount : index - conf.paginationIMGCount;
-    if (conf.paginationIMGCount > 1) {
+    index = oriented === "next" ? index + ADAPTER.conf.paginationIMGCount : index - ADAPTER.conf.paginationIMGCount;
+    if (ADAPTER.conf.paginationIMGCount > 1) {
       index += fixStep;
     }
     // current === -1 and oriented === "prev", this called by kayboard event "step-to-last-image", so reset index to last
-    if (index < -conf.paginationIMGCount) {
+    if (index < -ADAPTER.conf.paginationIMGCount) {
       index = queue.length - 1;
     } else {
       index = Math.max(0, index);
@@ -489,7 +490,7 @@ export class BigImageFrameManager {
   checkCurrent() {
     const rootRect = this.root.getBoundingClientRect();
     const isCenter: (rect: DOMRect, rootRect: DOMRect) => boolean = (() => {
-      if (conf.readMode === "continuous") {
+      if (ADAPTER.conf.readMode === "continuous") {
         return (rect, rootRect) => rect.top <= (rootRect.height / 2) && rect.bottom >= (rootRect.height / 2);
       } else {
         return (rect, rootRect) => rect.left <= (rootRect.width / 2) && rect.right >= (rootRect.width / 2);
@@ -516,7 +517,7 @@ export class BigImageFrameManager {
   // limit scrollTop or scrollLeft
   onScroll(_event: Event) {
     // console.log("scrolling, ", evt);
-    switch (conf.readMode) {
+    switch (ADAPTER.conf.readMode) {
       case "continuous": {
         const [first, last] = [
           this.container.children.item(1) as HTMLElement,
@@ -564,7 +565,7 @@ export class BigImageFrameManager {
         break;
       }
     }
-    if (conf.readMode !== "pagination") {
+    if (ADAPTER.conf.readMode !== "pagination") {
       this.debouncer.addEvent("bifm-on-wheel", () => this.checkCurrent(), 69);
     }
   }
@@ -582,10 +583,10 @@ export class BigImageFrameManager {
     }
     const [o, negative]: [Oriented, Oriented] = event.deltaY > 0 ? ["next", "prev"] : ["prev", "next"];
     this.oriented = o;
-    switch (conf.readMode) {
+    switch (ADAPTER.conf.readMode) {
       case "pagination": {
         const over = this.checkOverflow();
-        const [$ori, $neg] = conf.reversePages ? [negative, this.oriented] : [this.oriented, negative];
+        const [$ori, $neg] = ADAPTER.conf.reversePages ? [negative, this.oriented] : [this.oriented, negative];
         const rotated = this.root.classList.contains("bifm-rotate-90") || this.root.classList.contains("bifm-rotate-270");
         if (rotated) {
           this.stepNext(this.oriented);
@@ -605,7 +606,7 @@ export class BigImageFrameManager {
         if (customScrolling && over[this.oriented].overY > 0) {
           this.scrollerY.scroll(Math.min(over[this.oriented].overY, Math.abs(event.deltaY * 3)) * fix, Math.abs(Math.ceil(event.deltaY / 4)));
         }
-        fix = fix * (conf.reversePages ? -1 : 1);
+        fix = fix * (ADAPTER.conf.reversePages ? -1 : 1);
         if (over[this.oriented].overY - 1 <= 0 && over[$ori].overX > 0) { // should scroll
           this.scrollerX.scroll(Math.min(over[$ori].overX, Math.abs(event.deltaY * 3)) * fix, Math.abs(Math.ceil(event.deltaY / 4)));
         }
@@ -613,12 +614,12 @@ export class BigImageFrameManager {
       }
       case "horizontal": {
         preventDefault();
-        this.scrollerX.scroll(event.deltaY * (conf.reversePages ? -1 : 1), conf.scrollingSpeed);
+        this.scrollerX.scroll(event.deltaY * (ADAPTER.conf.reversePages ? -1 : 1), ADAPTER.conf.scrollingSpeed);
         break;
       }
       case "continuous": {
         if (customScrolling) {
-          this.scrollerY.scroll(event.deltaY, conf.scrollingSpeed);
+          this.scrollerY.scroll(event.deltaY, ADAPTER.conf.scrollingSpeed);
         }
         break;
       }
@@ -633,7 +634,7 @@ export class BigImageFrameManager {
 
   // prevent scroll to next page while mouse scrolling;
   tryPreventStep(): boolean {
-    if (conf.preventScrollPageTime === 0) return false;
+    if (ADAPTER.conf.preventScrollPageTime === 0) return false;
     if (this.preventStep.currentPreventFinished) {
       this.resetPreventStep();
       return false;
@@ -649,8 +650,8 @@ export class BigImageFrameManager {
         this.root.appendChild(lockEle);
         this.preventStep.ele = lockEle;
         // prevent time < 0 means prevent paging forever
-        if (conf.preventScrollPageTime > 0) {
-          const ani = lockEle.children[0].animate([{ width: "30vw" }, { width: "0vw" }], { duration: conf.preventScrollPageTime });
+        if (ADAPTER.conf.preventScrollPageTime > 0) {
+          const ani = lockEle.children[0].animate([{ width: "30vw" }, { width: "0vw" }], { duration: ADAPTER.conf.preventScrollPageTime });
           ani.onfinish = () => this.preventStep.ele && this.resetPreventStep(true);
           this.preventStep.ani = ani;
         }
@@ -692,7 +693,7 @@ export class BigImageFrameManager {
       const vid = document.createElement("video");
       vid.classList.add("bifm-img");
       vid.classList.add("bifm-vid");
-      vid.draggable = conf.dragImageOut;
+      vid.draggable = ADAPTER.conf.dragImageOut;
       // vid.preload = "none";
       vid.onloadeddata = () => {
         if (this.visible && imf.index === this.currentIndex) {
@@ -706,7 +707,7 @@ export class BigImageFrameManager {
       img.decoding = "async";
       img.classList.add("bifm-img");
       // img.draggable = !(conf.magnifier && conf.readMode !== "continuous");
-      img.draggable = conf.dragImageOut;
+      img.draggable = ADAPTER.conf.dragImageOut;
       if (imf.stage === FetchState.DONE) {
         img.src = imf.node.blobSrc!;
       } else if (imf.node.thumbnailSrc) {
@@ -737,15 +738,15 @@ export class BigImageFrameManager {
    * @param syncConf: sync to config, default = true 
    */
   scaleBigImages(fix: 1 | -1, rate: number, specifiedPercent?: number, syncConf?: boolean): number {
-    let oldPercent = conf.imgScale;
+    let oldPercent = ADAPTER.conf.imgScale;
     let newPercent = specifiedPercent ?? (oldPercent + (rate * fix));
-    switch (conf.readMode) {
+    switch (ADAPTER.conf.readMode) {
       case "pagination": {
         const rule = queryCSSRules(this.html.styleSheet, ".bifm-container-page");
         newPercent = Math.max(newPercent, 100);
         newPercent = Math.min(newPercent, 300);
         if (rule) rule.style.height = `${newPercent}%`;
-        if (conf.paginationIMGCount === 1) {
+        if (ADAPTER.conf.paginationIMGCount === 1) {
           const imgRule = queryCSSRules(this.html.styleSheet, ".bifm-container-page .bifm-img");
           if (imgRule) {
             imgRule.style.maxWidth = newPercent > 100 ? "" : "100%";
@@ -775,15 +776,15 @@ export class BigImageFrameManager {
         break;
     }
     if (syncConf ?? true) {
-      conf.imgScale = newPercent;
-      saveConf(conf);
+      ADAPTER.conf.imgScale = newPercent;
+      saveConf({ imgScale: newPercent }, ADAPTER.matcher!.name);
     }
     q("#scaleInput", this.html.pageHelper).textContent = `${newPercent}`;
     return newPercent;
   }
 
   resetScaleBigImages(syncConf: boolean) {
-    const percent = (conf.readMode !== "continuous" || IS_MOBILE) ? 100 : conf.defaultImgScaleModeC;
+    const percent = (ADAPTER.conf.readMode !== "continuous" || IS_MOBILE) ? 100 : ADAPTER.conf.defaultImgScaleModeC;
     this.scaleBigImages(1, 0, percent, syncConf);
   }
 
@@ -795,7 +796,7 @@ export class BigImageFrameManager {
         this.loadingHelper.style.display = "inline-block";
       }
       const ret = Array.from(this.currLoadingState).map(([k, v]) => `[P-${k + 1}: ${v}%]`);
-      if (conf.reversePages) ret.reverse();
+      if (ADAPTER.conf.reversePages) ret.reverse();
       this.loadingHelper.textContent = `Loading ${ret.join(",")}`;
     }
   }
@@ -809,7 +810,7 @@ export class BigImageFrameManager {
   */
   setElements() {
     let elements = Array.from(this.container.childNodes) as HTMLElement[];
-    const imgCount = conf.paginationIMGCount * 3;
+    const imgCount = ADAPTER.conf.paginationIMGCount * 3;
     if (elements.length > imgCount) {
       const removed = elements.splice(imgCount);
       removed.forEach(elem => elem.remove());
@@ -820,7 +821,7 @@ export class BigImageFrameManager {
       }
     }
     const queue = this.getChapter(this.chapterIndex).filteredQueue;
-    let [start, end] = [this.currentIndex - conf.paginationIMGCount, this.currentIndex + conf.paginationIMGCount * 2 - 1];
+    let [start, end] = [this.currentIndex - ADAPTER.conf.paginationIMGCount, this.currentIndex + ADAPTER.conf.paginationIMGCount * 2 - 1];
     [start, end] = [Math.max(start, 0), Math.min(end, queue.length - 1)];
 
     const withIndex = elements.map(elem => ({ index: parseIndex(elem), elem })).sort((a, b) => a.index - b.index);
@@ -838,7 +839,7 @@ export class BigImageFrameManager {
     for (let i = start; i <= end; i++) {
       const [elem, reused] = findOrSetIndex(i);
       if (!elem) throw new Error(`BIFM.setElements cannot found element by index:[${i}], or found empty element`);
-      const showing = i >= this.currentIndex && i < this.currentIndex + conf.paginationIMGCount;
+      const showing = i >= this.currentIndex && i < this.currentIndex + ADAPTER.conf.paginationIMGCount;
       elements.push(elem);
       if (showing) {
         elem.classList.remove("bifm-node-hide")
@@ -852,7 +853,7 @@ export class BigImageFrameManager {
         elem.appendChild(this.newMediaNode(queue[i]));
       }
     }
-    if (conf.reversePages) elements.reverse();
+    if (ADAPTER.conf.reversePages) elements.reverse();
     this.renderingElements = [...elements];
     const remain = withIndex.map(i => {
       i.elem.setAttribute("d-index", "-1");
@@ -885,7 +886,7 @@ class AutoPage {
       }
     };
     EBUS.subscribe("bifm-on-hidden", () => this.stop());
-    EBUS.subscribe("bifm-on-show", () => conf.autoPlay && this.start(this.lockVer));
+    EBUS.subscribe("bifm-on-show", () => ADAPTER.conf.autoPlay && this.start(this.lockVer));
     EBUS.subscribe("toggle-auto-play", () => {
       if (this.status === "stop") {
         this.start(this.lockVer);
@@ -917,7 +918,7 @@ class AutoPage {
       this.bifm.show(queue[this.bifm.currentIndex]);
     }
     const progress = q("#auto-page-progress", this.button);
-    const interval = () => conf.readMode === "pagination" ? conf.autoPageSpeed : 1;
+    const interval = () => ADAPTER.conf.readMode === "pagination" ? ADAPTER.conf.autoPageSpeed : 1;
     while (true) {
       await sleep(10); // need to wait 10ms for animation style changed
       progress.style.animation = `${interval() * 1000}ms linear main-progress`;
@@ -936,7 +937,7 @@ class AutoPage {
       const queue = this.bifm.getChapter(this.bifm.chapterIndex).filteredQueue;
       if (this.bifm.currentIndex < 0 || this.bifm.currentIndex >= queue.length) break;
 
-      if (conf.readMode === "pagination") {
+      if (ADAPTER.conf.readMode === "pagination") {
         const curr = this.bifm.container.querySelector<HTMLElement>(`div[d-index="${this.bifm.currentIndex}"]`)?.firstElementChild;
         if (curr instanceof HTMLVideoElement) {
           let resolve: () => void;
@@ -978,7 +979,7 @@ function stickyMouse(element: HTMLElement, event: MouseEvent, lastMouse: { x: nu
 
   const overflowY = element.scrollHeight - element.offsetHeight;
   if (overflowY > 0) {
-    const rateY = (conf.readMode === "continuous") ? 1 : overflowY / (element.offsetHeight / 4) * 3;
+    const rateY = (ADAPTER.conf.readMode === "continuous") ? 1 : overflowY / (element.offsetHeight / 4) * 3;
     let scrollTop = element.scrollTop + distanceY * rateY;
     scrollTop = Math.max(scrollTop, 0);
     scrollTop = Math.min(scrollTop, overflowY);
@@ -986,7 +987,7 @@ function stickyMouse(element: HTMLElement, event: MouseEvent, lastMouse: { x: nu
   }
   const overflowX = (elementsWidth ?? element.scrollWidth) - element.offsetWidth;
   if (overflowX > 0) {
-    const rateX = (conf.readMode !== "pagination") ? 1 : overflowX / (element.offsetWidth / 4) * 3;
+    const rateX = (ADAPTER.conf.readMode !== "pagination") ? 1 : overflowX / (element.offsetWidth / 4) * 3;
     let scrollLeft = element.scrollLeft + distanceX * rateX;
     // console.log(`overflow ${overflowX}, element.offsetWidth / 4: ${element.offsetWidth / 4}, rateX: ${rateX}, scrollLeft: ${scrollLeft}, distanceX: ${distanceX}`);
     element.scrollLeft = scrollLeft;

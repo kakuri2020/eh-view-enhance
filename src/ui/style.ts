@@ -1,5 +1,5 @@
-import { conf } from "../config";
 import { IS_MOBILE } from "../config";
+import { ADAPTER } from "../platform/adapt";
 
 export function styleCSS() {
   const css = `
@@ -62,7 +62,7 @@ export function styleCSS() {
   display: grid;
   align-content: start;
   grid-gap: 0.7em;
-  grid-template-columns: repeat(${conf.colCount}, minmax(10px, 1fr));
+  grid-template-columns: repeat(${ADAPTER.conf.colCount}, minmax(10px, 1fr));
   overflow: hidden scroll;
   padding: 0.3em;
   box-sizing: border-box;
@@ -282,20 +282,20 @@ export function styleCSS() {
   box-sizing: border-box;
 }
 .bifm-container-vert {
-  width: ${conf.imgScale}%;
+  width: ${ADAPTER.conf.imgScale}%;
   height: fit-content;
   margin: 0 auto;
 }
 .bifm-container-hori {
   width: fit-content;
-  height: ${conf.imgScale}%;
+  height: ${ADAPTER.conf.imgScale}%;
   margin: auto 0;
   display: flex;
   flex-wrap: nowrap;
 }
 .bifm-container-page {
   width: fit-content;
-  height: ${conf.imgScale}%;
+  height: ${ADAPTER.conf.imgScale}%;
   margin: 0 auto;
   display: flex;
   flex-wrap: nowrap;
@@ -318,7 +318,7 @@ export function styleCSS() {
   opacity: 0;
 }
 .bifm-container-page .bifm-img {
-  ${(conf.imgScale === 100 && conf.paginationIMGCount === 1) ? "max-width: 100%;" : ""}
+  ${(ADAPTER.conf.imgScale === 100 && ADAPTER.conf.paginationIMGCount === 1) ? "max-width: 100%;" : ""}
 }
 .bifm-img {
   height: 100%;
@@ -359,10 +359,10 @@ export function styleCSS() {
   position: fixed;
   z-index: 2011 !important;
   box-sizing: border-box;
-  top: ${conf.pageHelperAbTop};
-  left: ${conf.pageHelperAbLeft};
-  bottom: ${conf.pageHelperAbBottom};
-  right: ${conf.pageHelperAbRight};
+  top: ${ADAPTER.conf.pageHelperAbTop};
+  left: ${ADAPTER.conf.pageHelperAbLeft};
+  bottom: ${ADAPTER.conf.pageHelperAbBottom};
+  right: ${ADAPTER.conf.pageHelperAbRight};
 }
 .p-panel {
   z-index: 2012 !important;
@@ -397,7 +397,7 @@ export function styleCSS() {
 .b-main {
   display: flex;
   user-select: none;
-  flex-direction: ${conf.pageHelperAbLeft === "unset" ? "row-reverse" : "row"};
+  flex-direction: ${ADAPTER.conf.pageHelperAbLeft === "unset" ? "row-reverse" : "row"};
   flex-wrap: wrap-reverse;
 }
 .b-main-item {
@@ -798,7 +798,7 @@ export function styleCSS() {
   z-index: 2010;
   padding: 3px 10px;
   bottom: 0.2em;
-  ${conf.pageHelperAbLeft === "unset" ? "left: 0.2em;" : "right: 0.2em;"}
+  ${ADAPTER.conf.pageHelperAbLeft === "unset" ? "left: 0.2em;" : "right: 0.2em;"}
 }
 .bifm-vid-ctl > div {
   display: flex;

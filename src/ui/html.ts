@@ -1,4 +1,4 @@
-import { conf, getDisplayText, resetConf, saveConf } from "../config";
+import { saveConf } from "../config";
 import { Downloader } from "../download/downloader";
 import { dragElement, dragElementWithLine } from "../utils/drag-element";
 import q from "../utils/query-element";
@@ -15,6 +15,8 @@ import { ChaptersPanel } from "./chapters-panel";
 import { FilterPanel } from "./filter-panel";
 import { Filter } from "../filter";
 import { linkify } from "../utils/linkify";
+import { ADAPTER } from "../platform/adapt";
+import { getDisplayText } from "./style-custom-panel";
 
 export type Elements = ReturnType<typeof createHTML>;
 
@@ -60,15 +62,15 @@ export function createHTML(filter: Filter) {
         <a id="filter-panel-btn" class="b-main-item clickable" hidden>${dt.filter}</a>
         <div id="read-mode-bar" class="b-main-item" hidden>
             <div id="read-mode-select"
-            ><a class="b-main-option clickable ${conf.readMode === "pagination" ? "b-main-option-selected" : ""}" data-value="pagination">${dt.pagination}</a
-            ><a class="b-main-option clickable ${conf.readMode === "continuous" ? "b-main-option-selected" : ""}" data-value="continuous">${dt.continuous}</a
-            ><a class="b-main-option clickable ${conf.readMode === "horizontal" ? "b-main-option-selected" : ""}" data-value="horizontal">${dt.horizontal}</a></div>
+            ><a class="b-main-option clickable ${ADAPTER.conf.readMode === "pagination" ? "b-main-option-selected" : ""}" data-value="pagination">${dt.pagination}</a
+            ><a class="b-main-option clickable ${ADAPTER.conf.readMode === "continuous" ? "b-main-option-selected" : ""}" data-value="continuous">${dt.continuous}</a
+            ><a class="b-main-option clickable ${ADAPTER.conf.readMode === "horizontal" ? "b-main-option-selected" : ""}" data-value="horizontal">${dt.horizontal}</a></div>
         </div>
         <div id="pagination-adjust-bar" class="b-main-item" hidden>
             <span>
               <a id="paginationStepPrev" class="b-main-btn clickable" type="button">&lt;</a>
               <a id="paginationMinusBTN" class="b-main-btn clickable" type="button">-</a>
-              <span id="paginationInput" class="b-main-input">${conf.paginationIMGCount}</span>
+              <span id="paginationInput" class="b-main-input">${ADAPTER.conf.paginationIMGCount}</span>
               <a id="paginationAddBTN" class="b-main-btn clickable" type="button">+</a>
               <a id="paginationStepNext" class="b-main-btn clickable" type="button">&gt;</a>
             </span>
@@ -77,7 +79,7 @@ export function createHTML(filter: Filter) {
             <span>
               <span>${icons.zoomIcon}</span>
               <a id="scaleMinusBTN" class="b-main-btn clickable" type="button">-</a>
-              <span id="scaleInput" class="b-main-input" style="width: 3rem; cursor: move;">${conf.imgScale}</span>
+              <span id="scaleInput" class="b-main-input" style="width: 3rem; cursor: move;">${ADAPTER.conf.imgScale}</span>
               <a id="scaleAddBTN" class="b-main-btn clickable" type="button">+</a>
             </span>
         </div>
@@ -94,7 +96,7 @@ export function createHTML(filter: Filter) {
   style.innerHTML = styleCSS();
   const styleCustom = document.createElement("style");
   styleCustom.id = "ehvp-style-custom";
-  styleCustom.innerHTML = conf.customStyle;
+  styleCustom.innerHTML = ADAPTER.conf.customStyle;
   shadowRoot.append(style);
   root.append(styleCustom);
   shadowRoot.append(root);
@@ -111,12 +113,6 @@ export function createHTML(filter: Filter) {
     currPageElement: q("#p-curr-page", root),
     totalPageElement: q("#p-total", root),
     finishedElement: q("#p-finished", root),
-    showGuideElement: q("#show-guide-element", root),
-    showKeyboardCustomElement: q("#show-keyboard-custom-element", root),
-    showSiteProfilesElement: q("#show-site-profiles-element", root),
-    showStyleCustomElement: q("#show-style-custom-element", root),
-    showActionCustomElement: q("#show-action-custom-element", root),
-    resetConfigElement: q("#reset-config-element", root),
     imgLandLeft: q("#img-land-left", root),
     imgLandRight: q("#img-land-right", root),
     autoPageBTN: q("#auto-page-btn", root),
@@ -143,7 +139,7 @@ export function addEventListeners(events: Events, HTML: Elements, BIFM: BigImage
   };
 
   function collapsePanel(panel: HTMLElement) {
-    if (conf.autoCollapsePanel && !panel.classList.contains("p-panel-large")) {
+    if (ADAPTER.conf.autoCollapsePanel && !panel.classList.contains("p-panel-large")) {
       events.collapsePanelEvent(panel, panel.id);
     }
     if (BIFM.visible) {
@@ -202,30 +198,29 @@ export function addEventListeners(events: Events, HTML: Elements, BIFM: BigImage
     events.bigImageFrameKeyBoardEvent(event);
     event.stopPropagation();
   });
-  // 箭头导航
+
+  // Side Navigation Buttons
   HTML.imgLandLeft.addEventListener("click", (event) => {
-    BIFM.stepNext(conf.reversePages ? "next" : "prev");
+    BIFM.stepNext(ADAPTER.conf.reversePages ? "next" : "prev");
     event.stopPropagation();
   });
   HTML.imgLandRight.addEventListener("click", (event) => {
-    BIFM.stepNext(conf.reversePages ? "prev" : "next");
+    BIFM.stepNext(ADAPTER.conf.reversePages ? "prev" : "next");
     event.stopPropagation();
   });
 
-  HTML.showGuideElement.addEventListener("click", events.showGuideEvent);
-  HTML.showKeyboardCustomElement.addEventListener("click", events.showKeyboardCustomEvent);
-  HTML.showSiteProfilesElement.addEventListener("click", events.showSiteProfilesEvent);
-  HTML.showStyleCustomElement.addEventListener("click", events.showStyleCustomEvent);
-  HTML.showActionCustomElement.addEventListener("click", events.showActionCustomEvent);
-  HTML.resetConfigElement.addEventListener("click", resetConf);
-
   dragElement(HTML.pageHelper, {
     onFinish: () => {
-      conf.pageHelperAbTop = HTML.pageHelper.style.top;
-      conf.pageHelperAbLeft = HTML.pageHelper.style.left;
-      conf.pageHelperAbBottom = HTML.pageHelper.style.bottom;
-      conf.pageHelperAbRight = HTML.pageHelper.style.right;
-      saveConf(conf);
+      ADAPTER.conf.pageHelperAbTop = HTML.pageHelper.style.top;
+      ADAPTER.conf.pageHelperAbLeft = HTML.pageHelper.style.left;
+      ADAPTER.conf.pageHelperAbBottom = HTML.pageHelper.style.bottom;
+      ADAPTER.conf.pageHelperAbRight = HTML.pageHelper.style.right;
+      saveConf({
+        pageHelperAbTop: ADAPTER.conf.pageHelperAbTop,
+        pageHelperAbLeft: ADAPTER.conf.pageHelperAbLeft,
+        pageHelperAbBottom: ADAPTER.conf.pageHelperAbBottom,
+        pageHelperAbRight: ADAPTER.conf.pageHelperAbRight,
+      }, ADAPTER.conf.selectedSiteNameConfig);
     },
     onMoving: (pos) => {
       HTML.pageHelper.style.top = pos.top === undefined ? "unset" : `${pos.top}px`;
@@ -241,24 +236,25 @@ export function addEventListeners(events: Events, HTML: Elements, BIFM: BigImage
   HTML.readModeSelect.addEventListener("click", (event) => {
     const value = (event.target as HTMLElement).getAttribute("data-value");
     if (value) {
-      events.changeReadModeEvent(value);
+      events.changeReadModeEvent(value, ADAPTER.matcher!.name);
       PH.minify(PH.lastStage);
     }
   });
-  q("#paginationStepPrev", HTML.pageHelper).addEventListener("click", () => BIFM.stepNext(conf.reversePages ? "next" : "prev", conf.reversePages ? -1 : 1));
-  q("#paginationStepNext", HTML.pageHelper).addEventListener("click", () => BIFM.stepNext(conf.reversePages ? "prev" : "next", conf.reversePages ? 1 : -1));
-  q("#paginationMinusBTN", HTML.pageHelper).addEventListener("click", () => events.modNumberConfigEvent("paginationIMGCount", "minus"));
-  q("#paginationAddBTN", HTML.pageHelper).addEventListener("click", () => events.modNumberConfigEvent("paginationIMGCount", "add"));
-  q("#paginationInput", HTML.pageHelper).addEventListener("wheel", (event) => events.modNumberConfigEvent("paginationIMGCount", event.deltaY < 0 ? "add" : "minus"));
+
+  q("#paginationStepPrev", HTML.pageHelper).addEventListener("click", () => BIFM.stepNext(ADAPTER.conf.reversePages ? "next" : "prev", ADAPTER.conf.reversePages ? -1 : 1));
+  q("#paginationStepNext", HTML.pageHelper).addEventListener("click", () => BIFM.stepNext(ADAPTER.conf.reversePages ? "prev" : "next", ADAPTER.conf.reversePages ? 1 : -1));
+  q("#paginationMinusBTN", HTML.pageHelper).addEventListener("click", () => events.modNumberConfigEvent("paginationIMGCount", "minus", undefined, ADAPTER.matcher!.name));
+  q("#paginationAddBTN", HTML.pageHelper).addEventListener("click", () => events.modNumberConfigEvent("paginationIMGCount", "add", undefined, ADAPTER.matcher!.name));
+  q("#paginationInput", HTML.pageHelper).addEventListener("wheel", (event) => events.modNumberConfigEvent("paginationIMGCount", event.deltaY < 0 ? "add" : "minus", undefined, ADAPTER.matcher!.name));
 
   q("#scaleInput", HTML.pageHelper).addEventListener("mousedown", (event) => {
     const element = event.target as HTMLElement;
-    const scale = conf.imgScale || (conf.readMode === "continuous" ? conf.defaultImgScaleModeC : 100);
+    const scale = ADAPTER.conf.imgScale || (ADAPTER.conf.readMode === "continuous" ? ADAPTER.conf.defaultImgScaleModeC : 100);
     dragElementWithLine(event, element, { y: true }, (data) => {
       if (data.distance === 0) return;
       const fix = (data.direction & 3) === 1 ? 1 : -1; // 4bit: UDLR,  data.direction & 3 means remove UD
       BIFM.scaleBigImages(1, 0, Math.floor(scale + data.distance * 0.6 * fix));
-      element.textContent = conf.imgScale.toString();
+      element.textContent = ADAPTER.conf.imgScale.toString();
     });
   });
   q("#scaleMinusBTN", HTML.pageHelper).addEventListener("click", () => BIFM.scaleBigImages(-1, 10));

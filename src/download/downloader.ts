@@ -1,5 +1,4 @@
 import { FetchState, IMGFetcher } from "../img-fetcher";
-import { conf } from "../config";
 import { IMGFetcherQueue } from "../fetcher-queue";
 import { IdleLoader } from "../idle-loader";
 import { Matcher } from "../platform/platform";
@@ -13,6 +12,7 @@ import { Chapter, PageFetcher } from "../page-fetcher";
 import { evLog } from "../utils/ev-log";
 import { DownloaderPanel } from "../ui/downloader-panel";
 import { i18n } from "../utils/i18n";
+import { ADAPTER } from "../platform/adapt";
 
 const FILENAME_INVALIDCHAR = /[\\/:*?"<>|\n\t]/g;
 export class Downloader {
@@ -117,10 +117,10 @@ export class Downloader {
   }
 
   needNumberTitle(queue: IMGFetcher[]): boolean {
-    if (conf.filenameOrder === "numbers") return true;
-    if (conf.filenameOrder === "original") return false;
+    if (ADAPTER.conf.filenameOrder === "numbers") return true;
+    if (ADAPTER.conf.filenameOrder === "original") return false;
     let comparer;
-    if (conf.filenameOrder === "alphabetically") {
+    if (ADAPTER.conf.filenameOrder === "alphabetically") {
       comparer = (a: string, before: string) => a < before;
     } else {
       comparer = (a: string, before: string) => a.localeCompare(before, undefined, { numeric: true, sensitivity: 'base' }) < 0;
@@ -186,7 +186,7 @@ export class Downloader {
           // find all of unloading imgFetcher and splice frist few imgFetchers
           this.idleLoader.processingIndexList = this.queue.map((imgFetcher, index) => (!imgFetcher.lock && imgFetcher.stage === FetchState.URL ? index : -1))
             .filter((index) => index >= 0)
-            .splice(0, conf.downloadThreads);
+            .splice(0, ADAPTER.conf.downloadThreads);
           this.idleLoader.onFailed(() => sel.reject("download failed or canceled"));
           this.idleLoader.checkProcessingIndex();
           this.idleLoader.start();
@@ -211,7 +211,7 @@ export class Downloader {
     const needNumberTitle = this.needNumberTitle(chapter.filteredQueue);
     if (needNumberTitle) {
       const digits = chapter.filteredQueue.length.toString().length;
-      if (conf.filenameOrder === "numbers") {
+      if (ADAPTER.conf.filenameOrder === "numbers") {
         checkTitle = (title: string, index: number) => `${index + 1}`.padStart(digits, "0") + "." + title.split(".").pop();
       } else {
         checkTitle = (title: string, index: number) => `${index + 1}`.padStart(digits, "0") + "_" + title.replaceAll(FILENAME_INVALIDCHAR, "_");
@@ -263,7 +263,7 @@ export class Downloader {
         const ret = this.mapToFileLikes(chapter, picked, directory);
         files.push(...ret);
       }
-      const zip = new Zip({ volumeSize: 1024 * 1024 * (conf.archiveVolumeSize || 1500) });
+      const zip = new Zip({ volumeSize: 1024 * 1024 * (ADAPTER.conf.archiveVolumeSize || 1500) });
       // const zip = new Zip({ volumeSize: 1024 * 1024 * 4000 });
       // for (let i = 0; i < 50; i++) {
       //   const buffer = new ArrayBuffer(100 * 1024 * 1024);

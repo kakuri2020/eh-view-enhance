@@ -1,7 +1,7 @@
-import { conf } from "../config";
 import EBUS from "../event-bus";
 import { FetchState } from "../img-fetcher";
 import { Chapter } from "../page-fetcher";
+import { ADAPTER } from "../platform/adapt";
 import { evLog } from "../utils/ev-log";
 import { Elements } from "./html";
 
@@ -81,14 +81,14 @@ export class PageHelper {
     } else {
       switch (stage) {
         case "fullViewGrid":
-          if (conf.minifyPageHelper === "never" || conf.minifyPageHelper === "inBigMode") {
+          if (ADAPTER.conf.minifyPageHelper === "never" || ADAPTER.conf.minifyPageHelper === "inBigMode") {
             level = [1, 1];
           } else {
             level = hover ? [1, 1] : [3, 1];
           }
           break;
         case "bigImageFrame":
-          if (conf.minifyPageHelper === "never") {
+          if (ADAPTER.conf.minifyPageHelper === "never") {
             level = [2, 2];
           } else {
             level = hover ? [2, 2] : [3, 2];
@@ -115,9 +115,9 @@ export class PageHelper {
     }
     const filter = (id: string) => {
       if (id === "chapters-panel-btn") return this.chapters().length > 1;
-      if (id === "filter-panel-btn") return conf.enableFilter;
+      if (id === "filter-panel-btn") return ADAPTER.conf.enableFilter;
       if (id === "auto-page-btn" && level[0] === 3) return this.html.pageHelper.querySelector("#auto-page-btn")?.getAttribute("data-status") === "playing";
-      if (id === "pagination-adjust-bar") return conf.readMode === "pagination";
+      if (id === "pagination-adjust-bar") return ADAPTER.conf.readMode === "pagination";
       return true;
     }
     const pick = getPick(level[0], this.downloading()).filter(filter);

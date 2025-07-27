@@ -1,5 +1,6 @@
-import { conf, ImageActionDesc, saveConf } from "../config";
+import { ImageActionDesc, saveConf } from "../config";
 import { i18n } from "../utils/i18n";
+import { ADAPTER } from "../platform/adapt";
 
 export function createActionCustomPanel(root: HTMLElement, onclose?: () => void) {
   const HTML_STR = `
@@ -99,17 +100,17 @@ export function createActionCustomPanel(root: HTMLElement, onclose?: () => void)
   function createActionValues() {
     actionsContainer.innerHTML = "";
     const tamplate = document.createElement("div");
-    conf.imgNodeActions.map(action => {
+    ADAPTER.conf.imgNodeActions.map(action => {
       const str = `<span class="ehvp-custom-panel-item-value"><span class="ehvp-span-action-icon">${action.icon}</span><span class="ehvp-custom-btn ehvp-custom-btn-plain" style="padding:0;border:none;">&nbspx&nbsp</span></span>`;
       tamplate.innerHTML = str;
       const element = tamplate.firstElementChild as HTMLElement;
       actionsContainer.append(element);
       element.querySelector(".ehvp-custom-btn")!.addEventListener("click", () => {
-        const index = conf.imgNodeActions.findIndex(a => a.icon === action.icon && a.funcBody === action.funcBody);
+        const index = ADAPTER.conf.imgNodeActions.findIndex(a => a.icon === action.icon && a.funcBody === action.funcBody);
         if (index === -1) return;
         setActionValue(action);
-        conf.imgNodeActions.splice(index, 1);
-        saveConf(conf);
+        ADAPTER.conf.imgNodeActions.splice(index, 1);
+        saveConf({ imgNodeActions: ADAPTER.conf.imgNodeActions });
         createActionValues();
       });
       element.querySelector(".ehvp-span-action-icon")!.addEventListener("click", () => setActionValue(action));
@@ -147,8 +148,8 @@ export function createActionCustomPanel(root: HTMLElement, onclose?: () => void)
         return;
       }
     }
-    conf.imgNodeActions.push({ icon, description: desc, workon, funcBody });
-    saveConf(conf);
+    ADAPTER.conf.imgNodeActions.push({ icon, description: desc, workon, funcBody });
+    saveConf({ imgNodeActions: ADAPTER.conf.imgNodeActions });
     createActionValues();
     fullPanel.querySelector(".ehvp-custom-panel-container")?.scrollTo({ top: 0 });
   }

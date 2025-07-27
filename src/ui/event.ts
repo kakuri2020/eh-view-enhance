@@ -1,4 +1,4 @@
-import { ConfigBooleanType, ConfigNumberType, ConfigSelectType, ReadMode, conf, saveConf } from "../config";
+import { ConfigBooleanType, ConfigNumberType, ConfigSelectType, ReadMode, saveConf } from "../config";
 import EBUS from "../event-bus";
 import { IMGFetcherQueue } from "../fetcher-queue";
 import { IdleLoader } from "../idle-loader";
@@ -14,6 +14,7 @@ import { BigImageFrameManager } from "./big-image-frame-manager";
 import { createStyleCustomPanel } from "./style-custom-panel";
 import queryCSSRules from "../utils/query-cssrules";
 import { createActionCustomPanel } from "./actions-custom";
+import { ADAPTER } from "../platform/adapt";
 
 export type Events = ReturnType<typeof initEvents>;
 
@@ -65,7 +66,7 @@ export class KeyboardDesc {
 
 export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGFetcherQueue, IL: IdleLoader, PH: PageHelper) {
   // modify config
-  function modNumberConfigEvent(key: ConfigNumberType, data?: "add" | "minus", value?: number) {
+  function modNumberConfigEvent(key: ConfigNumberType, data?: "add" | "minus", value?: number, siteName?: string) {
     if (!value) {
       const range = {
         colCount: [1, 12],
@@ -81,30 +82,30 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
       };
       let mod = 1;
       if (key === "preventScrollPageTime" || key === "rowHeight" || key === "scrollingDelta") {
-        mod = conf[key] === 1 ? 9 : 10;
+        mod = ADAPTER.conf[key] === 1 ? 9 : 10;
       };
       if (data === "add") {
-        value = Math.min(conf[key] + mod, range[key][1]);
+        value = Math.min(ADAPTER.conf[key] + mod, range[key][1]);
       } else if (data === "minus") {
-        value = Math.max(conf[key] - mod, range[key][0]);
+        value = Math.max(ADAPTER.conf[key] - mod, range[key][0]);
       }
     }
     if (value === undefined) return;
-    conf[key] = value;
+    ADAPTER.conf[key] = value;
     const inputElement = q<HTMLInputElement>(`#${key}Input`, HTML.config.panel);
-    inputElement.value = conf[key].toString();
+    inputElement.value = ADAPTER.conf[key].toString();
     if (key === "colCount" || key === "rowHeight") {
-      EBUS.emit("fvg-flow-vision-resize");
+      EBUS.emit("fvg-layout-resize");
     }
     if (key === "paginationIMGCount") {
-      q("#paginationInput", HTML.paginationAdjustBar).textContent = conf.paginationIMGCount.toString();
+      q("#paginationInput", HTML.paginationAdjustBar).textContent = ADAPTER.conf.paginationIMGCount.toString();
       const imgRule = queryCSSRules(HTML.styleSheet, ".bifm-container-page .bifm-img");
       if (imgRule) {
-        imgRule.style.maxWidth = (conf.imgScale === 100 && conf.paginationIMGCount === 1) ? "100%" : "";
+        imgRule.style.maxWidth = (ADAPTER.conf.imgScale === 100 && ADAPTER.conf.paginationIMGCount === 1) ? "100%" : "";
       }
       BIFM.setNow(IFQ[IFQ.currIndex]);
     }
-    saveConf(conf);
+    saveConf({ [key]: value }, siteName ?? ADAPTER.conf.selectedSiteNameConfig);
   }
 
   // modify config
@@ -116,11 +117,11 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
       value = inputElement.checked || false;
     }
     if (value === undefined) return;
-    conf[key] = value;
-    saveConf(conf);
+    ADAPTER.conf[key] = value;
+    saveConf({ [key]: value }, ADAPTER.conf.selectedSiteNameConfig);
     if (key === "autoLoad") {
-      IL.autoLoad = conf.autoLoad;
-      IL.abort(0, conf.restartIdleLoader / 3);
+      IL.autoLoad = ADAPTER.conf.autoLoad;
+      IL.abort(0, ADAPTER.conf.restartIdleLoader / 3);
     }
     if (key === "reversePages") {
       BIFM.changeLayout();
@@ -131,22 +132,23 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
     // }
   }
 
-  function changeReadModeEvent(value?: string) {
-    if (value) {
-      conf.readMode = value as any;
-    }
+  function changeReadModeEvent(value?: string, siteName?: string) {
+    if (value) ADAPTER.conf.readMode = value as any;
+
     BIFM.changeLayout();
-    conf.autoPageSpeed = conf.readMode === "pagination" ? 5 : 1;
-    saveConf(conf);
-    q<HTMLInputElement>("#autoPageSpeedInput", HTML.config.panel).value = conf.autoPageSpeed.toString();
+
+    ADAPTER.conf.autoPageSpeed = ADAPTER.conf.readMode === "pagination" ? 5 : 1;
+    saveConf({ readMode: ADAPTER.conf.readMode, autoPageSpeed: ADAPTER.conf.autoPageSpeed }, siteName ?? ADAPTER.conf.selectedSiteNameConfig);
+
+    q<HTMLInputElement>("#autoPageSpeedInput", HTML.config.panel).value = ADAPTER.conf.autoPageSpeed.toString();
     Array.from(HTML.readModeSelect.querySelectorAll(".b-main-option")).forEach((element) => {
-      if (element.getAttribute("data-value") === conf.readMode) {
+      if (element.getAttribute("data-value") === ADAPTER.conf.readMode) {
         element.classList.add("b-main-option-selected");
       } else {
         element.classList.remove("b-main-option-selected");
       }
     });
-    if (conf.readMode === "pagination") {
+    if (ADAPTER.conf.readMode === "pagination") {
       HTML.root.querySelectorAll<HTMLElement>(".img-land").forEach(element => element.style.display = "");
     } else {
       HTML.root.querySelectorAll<HTMLElement>(".img-land").forEach(element => element.style.display = "none");
@@ -162,14 +164,14 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
       value = inputElement.value;
     }
     if (!value) return;
-    (conf[key] as any) = value;
-    saveConf(conf);
-
+    (ADAPTER.conf[key] as any) = value;
     if (key === "readMode") {
       changeReadModeEvent();
+      return;
     }
+    saveConf({ [key]: value }, ADAPTER.conf.selectedSiteNameConfig);
     if (key === "minifyPageHelper") {
-      switch (conf.minifyPageHelper) {
+      switch (ADAPTER.conf.minifyPageHelper) {
         case "always":
           PH.minify("bigImageFrame");
           break;
@@ -178,6 +180,9 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
           PH.minify(BIFM.visible ? "bigImageFrame" : "fullViewGrid");
           break;
       }
+    }
+    if (key === "gridMode") {
+      EBUS.emit("fvg-layout-change");
     }
   }
 
@@ -261,14 +266,14 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
         ["arrowleft"],
         () => {
           BIFM.callbackOnWheel?.();
-          BIFM.stepNext(conf.reversePages ? "next" : "prev");
+          BIFM.stepNext(ADAPTER.conf.reversePages ? "next" : "prev");
         }
       ),
       "step-image-next": new KeyboardDesc(
         ["arrowright"],
         () => {
           BIFM.callbackOnWheel?.();
-          BIFM.stepNext(conf.reversePages ? "prev" : "next");
+          BIFM.stepNext(ADAPTER.conf.reversePages ? "prev" : "next");
         }
       ),
       "step-to-first-image": new KeyboardDesc(
@@ -293,7 +298,7 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
           const key = parseKey(event);
           const noPrevent = ["pageup", "shift+space"].includes(key);
           let customKey = !["pageup", "arrowup", "shift+space"].includes(key);
-          BIFM.onWheel(new WheelEvent("wheel", { deltaY: conf.scrollingDelta * -1 }), noPrevent, customKey, undefined, event);
+          BIFM.onWheel(new WheelEvent("wheel", { deltaY: ADAPTER.conf.scrollingDelta * -1 }), noPrevent, customKey, undefined, event);
         }, true
       ),
       "scroll-image-down": new KeyboardDesc(
@@ -302,7 +307,7 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
           const key = parseKey(event);
           const noPrevent = ["pagedown", "space"].includes(key);
           const customKey = !["pagedown", "arrowdown", "space"].includes(key);
-          BIFM.onWheel(new WheelEvent("wheel", { deltaY: conf.scrollingDelta }), noPrevent, customKey, undefined, event);
+          BIFM.onWheel(new WheelEvent("wheel", { deltaY: ADAPTER.conf.scrollingDelta }), noPrevent, customKey, undefined, event);
         }, true
       ),
       "toggle-auto-play": new KeyboardDesc(
@@ -313,13 +318,13 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
         ["alt+m"],
         () => {
           const readModeList: ReadMode[] = ["pagination", "continuous", "horizontal"];
-          const index = (readModeList.indexOf(conf.readMode) + 1) % readModeList.length;
+          const index = (readModeList.indexOf(ADAPTER.conf.readMode) + 1) % readModeList.length;
           modSelectConfigEvent("readMode", readModeList[index]);
         }, true
       ),
       "toggle-reverse-pages": new KeyboardDesc(
         ["alt+f"],
-        () => modBooleanConfigEvent("reversePages", !conf.reversePages), true
+        () => modBooleanConfigEvent("reversePages", !ADAPTER.conf.reversePages), true
       ),
       "rotate-image": new KeyboardDesc(
         ["alt+r"],
@@ -360,7 +365,7 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
         () => {
           IL.autoLoad = !IL.autoLoad;
           if (IL.autoLoad) {
-            IL.abort(IFQ.currIndex, conf.restartIdleLoader / 3);
+            IL.abort(IFQ.currIndex, ADAPTER.conf.restartIdleLoader / 3);
             EBUS.emit("notify-message", "info", "Auto load Restarted", 3 * 1000);
           } else {
             EBUS.emit("notify-message", "info", "Auto load Pause", 3 * 1000);
@@ -389,7 +394,7 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
       ),
       "resize-flow-vision": new KeyboardDesc(
         ["alt+r"],
-        () => EBUS.emit("fvg-flow-vision-resize")
+        () => EBUS.emit("fvg-layout-resize")
       ),
       "start-download": new KeyboardDesc(
         ["shift+alt+d"],
@@ -425,7 +430,7 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
     if (HTML.bigImageFrame.classList.contains("big-img-frame-collapse")) return;
     const key = parseKey(event);
     const found = Object.entries(keyboardEvents.inBigImageMode).find(([id, desc]) => {
-      const override = conf.keyboards.inBigImageMode[id as KeyboardInBigImageModeId];
+      const override = ADAPTER.conf.keyboards.inBigImageMode[id as KeyboardInBigImageModeId];
       return ((override !== undefined && override.length > 0) ? override.includes(key) : desc.defaultKeys.includes(key));
     });
     if (!found) return;
@@ -438,7 +443,7 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
     if (HTML.root.classList.contains("ehvp-root-collapse")) return;
     const key = parseKey(event);
     const found = Object.entries(keyboardEvents.inFullViewGrid).find(([id, desc]) => {
-      const override = conf.keyboards.inFullViewGrid[id as KeyboardInFullViewGridId];
+      const override = ADAPTER.conf.keyboards.inFullViewGrid[id as KeyboardInFullViewGridId];
       return ((override !== undefined && override.length > 0) ? override.includes(key) : desc.defaultKeys.includes(key));
     });
     if (found) {
@@ -456,7 +461,7 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
     if (!HTML.bigImageFrame.classList.contains("big-img-frame-collapse")) return;
     const key = parseKey(event);
     const found = Object.entries(keyboardEvents.inMain).find(([id, desc]) => {
-      const override = conf.keyboards.inMain[id as KeyboardInMainId];
+      const override = ADAPTER.conf.keyboards.inMain[id as KeyboardInMainId];
       return ((override !== undefined && override.length > 0) ? override.includes(key) : desc.defaultKeys.includes(key));
     });
     if (!found) return;

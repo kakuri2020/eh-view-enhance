@@ -1,5 +1,5 @@
-import { SiteProfile, conf, saveConf } from "../config";
-import { getMatchers } from "../platform/adapt";
+import { SiteProfile, getSiteConfig, saveConf } from "../config";
+import { ADAPTER } from "../platform/adapt";
 import { i18n } from "../utils/i18n";
 import q from "../utils/query-element";
 import { b64EncodeUnicode } from "../utils/random";
@@ -34,18 +34,16 @@ function createWorkURLs(workURLs: string[], container: HTMLElement, onRemove: (v
 }
 
 export default function createSiteProfilePanel(root: HTMLElement, onclose?: () => void) {
-  const matchers = getMatchers();
+  const matchers = ADAPTER.matchers;
   const listItems = matchers.map((matcher) => {
-    const name = matcher.name();
+    const name = matcher.name;
+    const profile = getSiteConfig(name);
     const id = "id-" + b64EncodeUnicode(name).replaceAll(/[+=\/]/g, "-");
-    const profile: SiteProfile | undefined = conf.siteProfiles[name];
     return `<li data-index="${id}" class="ehvp-custom-panel-list-item">
              <div class="ehvp-custom-panel-list-item-title">
                <div style="font-size: 1.2em;font-weight: 800;">${name}</div>
                <div>
-                 <label class="ehvp-custom-panel-checkbox"><span>${i18n.enable.get()}: </span><input id="${id}-enable-checkbox" ${profile?.enable ?? true ? "checked" : ""} type="checkbox"></label>
-                 <label class="ehvp-custom-panel-checkbox"><span>${i18n.enableAutoOpen.get()}: </span><input id="${id}-enable-auto-open-checkbox" ${profile?.enableAutoOpen ?? true ? "checked" : ""} type="checkbox"></label>
-                 <label class="ehvp-custom-panel-checkbox"><span>${i18n.enableFlowVision.get()}: </span><input id="${id}-enable-flow-vision-checkbox" ${profile?.enableFlowVision ?? true ? "checked" : ""} type="checkbox"></label>
+                 <label class="ehvp-custom-panel-checkbox"><span>${i18n.enable.get()}: </span><input id="${id}-enable-checkbox" ${profile.enable ?? true ? "checked" : ""} type="checkbox"></label>
                  <label class="ehvp-custom-panel-checkbox"><span>${i18n.addRegexp.get()}: </span><span id="${id}-add-workurl" class="ehvp-custom-btn ehvp-custom-btn-green">&nbsp+&nbsp</span></label>
                </div>
              </div>
@@ -89,56 +87,37 @@ export default function createSiteProfilePanel(root: HTMLElement, onclose?: () =
   root.appendChild(fullPanel);
   fullPanel.querySelector(".ehvp-custom-panel-close")!.addEventListener("click", close);
 
-  const siteProfiles = conf.siteProfiles;
   matchers.forEach(matcher => {
-    const name = matcher.name();
+    const name = matcher.name;
     const id = "id-" + b64EncodeUnicode(name).replaceAll(/[+=\/]/g, "-");
-    const defaultWorkURLs = matcher.workURLs().map(u => u.source);
+    const defaultWorkURLs = matcher.workURLs.map(u => u.source);
 
     const getProfile = () => {
-      let profile = siteProfiles[name];
-      if (!profile) {
-        profile = { enable: true, enableAutoOpen: true, enableFlowVision: true, workURLs: [...defaultWorkURLs] };
-        siteProfiles[name] = profile;
-      }
-      return profile;
+      return getSiteConfig(name);
     };
     // enable script on this site;
     const enableCheckbox = q<HTMLInputElement>(`#${id}-enable-checkbox`, fullPanel);
     enableCheckbox.addEventListener("click", () => {
-      getProfile().enable = enableCheckbox.checked;
-      saveConf(conf);
-    });
-    // enable auto open on this site;
-    const enableAutoOpenCheckbox = q<HTMLInputElement>(`#${id}-enable-auto-open-checkbox`, fullPanel);
-    enableAutoOpenCheckbox.addEventListener("click", () => {
-      getProfile().enableAutoOpen = enableAutoOpenCheckbox.checked;
-      saveConf(conf);
-    });
-    // enable flow vision on this site;
-    const enableFlowVisionCheckbox = q<HTMLInputElement>(`#${id}-enable-flow-vision-checkbox`, fullPanel);
-    enableFlowVisionCheckbox.addEventListener("click", () => {
-      getProfile().enableFlowVision = enableFlowVisionCheckbox.checked;
-      saveConf(conf);
+      saveConf({ enable: enableCheckbox.checked });
     });
     // add custom work url
     const addWorkURL = q(`#${id}-add-workurl`, fullPanel);
     const workURLContainer = q(`#${id}-workurls`, fullPanel);
     const removeWorkURL = (value: string, profile: SiteProfile) => {
-      const index = profile.workURLs.indexOf(value);
+      const index = profile.workURLs?.indexOf(value) ?? -1;
       let changed = false;
       if (index > -1) {
-        profile.workURLs.splice(index, 1);
+        profile.workURLs!.splice(index, 1);
         changed = true;
       }
-      if ((profile.workURLs.length) === 0) {
-        profile.workURLs = [...defaultWorkURLs];
+      if ((profile.workURLs?.length ?? 0) === 0) {
+        profile.workURLs = undefined;
         changed = true;
         createWorkURLs(defaultWorkURLs, workURLContainer, (value) => {
           removeWorkURL(value, getProfile());
         });
       }
-      if (changed) saveConf(conf);
+      if (changed) saveConf({ workURLs: profile.workURLs }, matcher.name);
     };
     addWorkURL.addEventListener("click", () => {
       const background = document.createElement("div");
@@ -154,23 +133,18 @@ export default function createSiteProfilePanel(root: HTMLElement, onclose?: () =
         }
         background.remove();
         const profile = getProfile();
+        if (!profile.workURLs) {
+          profile.workURLs = [...defaultWorkURLs];
+        }
         profile.workURLs.push(value);
-        saveConf(conf);
-        createWorkURLs(getProfile().workURLs, workURLContainer, (value) => {
+        saveConf({ workURLs: profile.workURLs }, matcher.name);
+        createWorkURLs(profile.workURLs, workURLContainer, (value) => {
           removeWorkURL(value, getProfile());
         });
       });
     });
     // init work urls to html
-    let workURLs = defaultWorkURLs;
-    if (siteProfiles[name]) {
-      if (siteProfiles[name].workURLs.length === 0) {
-        siteProfiles[name].workURLs.push(...defaultWorkURLs);
-      } else {
-        workURLs = siteProfiles[name].workURLs;
-      }
-    }
-    createWorkURLs(workURLs, workURLContainer, (value) => {
+    createWorkURLs(getProfile().workURLs ?? defaultWorkURLs, workURLContainer, (value) => {
       removeWorkURL(value, getProfile());
     });
   });

@@ -351,6 +351,12 @@ pero desactivará la lupa y la capacidad de arrastrar y mover imágenes.`,
     '읽기 모드',
     'Modo de lectura'
   ],
+  gridMode: [
+    'Thumbnail Mode',
+    '缩略图模式',
+    'Thumbnail Mode',
+    'Thumbnail Mode'
+  ],
   readModeTooltip: [
     'Switch to the next picture when scrolling, otherwise read continuously',
     '滚动时切换到下一张图片，否则连续阅读',
@@ -565,6 +571,12 @@ pero desactivará la lupa y la capacidad de arrastrar y mover imágenes.`,
     '生效站点',
     '사이트에서 작동',
     'Funciona en sitios',
+  ],
+  global: [
+    'Global',
+    '全局',
+    'Global',
+    'Global',
   ],
   controlBarStyleTooltip: [
     'Click on an item to modify its display text, such as emoji or personalized text. Changes will take effect after restarting.',

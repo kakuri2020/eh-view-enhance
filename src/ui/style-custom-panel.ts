@@ -1,6 +1,7 @@
-import { DisplayText, IS_MOBILE, conf, getDisplayText, saveConf } from "../config";
+import { DisplayText, IS_MOBILE, saveConf } from "../config";
 import { i18n } from "../utils/i18n";
 import icons from "../utils/icons";
+import { ADAPTER } from "../platform/adapt";
 
 function createControlBar() {
   const displayText = getDisplayText();
@@ -77,7 +78,7 @@ export function createStyleCustomPanel(root: HTMLElement, onclose?: () => void) 
         <span class="ehvp-style-preset-btn ehvp-custom-btn ehvp-custom-btn-green" data-index="3">Preset 4</span>
         <span class="ehvp-style-preset-btn ehvp-custom-btn ehvp-custom-btn-plain" data-index="99">Reset</span>
       </div>
-      <textarea id="style-custom-input" style="width: 100%; height: 50vh;border:none;background-color:#00000090;color:#97ff97;text-align:left;vertical-align:top;font-size:1.2em;font-weight:600;">${conf.customStyle ?? ""}</textarea>
+      <textarea id="style-custom-input" style="width: 100%; height: 50vh;border:none;background-color:#00000090;color:#97ff97;text-align:left;vertical-align:top;font-size:1.2em;font-weight:600;">${ADAPTER.conf.customStyle ?? ""}</textarea>
       <span style="position:absolute;bottom:2em;right:1em;" class="ehvp-custom-btn ehvp-custom-btn-green" id="style-custom-confirm">&nbspApply&nbsp</span>
     </div>
   </div>
@@ -122,8 +123,8 @@ export function createStyleCustomPanel(root: HTMLElement, onclose?: () => void) 
     const value = btnCustomInput.value;
     btnCustomInput.value = "";
     if (!value || !pickedKey) return;
-    conf.displayText[pickedKey] = value;
-    saveConf(conf);
+    ADAPTER.conf.displayText[pickedKey] = value;
+    saveConf({ displayText: ADAPTER.conf.displayText });
     controlBarContainer.innerHTML = createControlBar();
     initPickable();
   };
@@ -131,16 +132,16 @@ export function createStyleCustomPanel(root: HTMLElement, onclose?: () => void) 
   btnCustomInput.addEventListener("keypress", (ev) => ev.key === "Enter" && confirm());
   btnCustomReset.addEventListener("click", () => {
     btnCustomInput.value = "";
-    conf.displayText = {};
-    saveConf(conf);
+    ADAPTER.conf.displayText = {};
+    saveConf({ displayText: ADAPTER.conf.displayText });
     controlBarContainer.innerHTML = createControlBar();
     initPickable();
   });
   for (let i = 0; i < 2; i++) {
     const btnCustomPreset = fullPanel.querySelector(`#b-main-btn-custom-preset${i + 1}`)!;
     btnCustomPreset.addEventListener("click", () => {
-      conf.displayText = displayTextPreset(i);
-      saveConf(conf);
+      ADAPTER.conf.displayText = displayTextPreset(i);
+      saveConf({ displayText: ADAPTER.conf.displayText });
       controlBarContainer.innerHTML = createControlBar();
       initPickable();
     });
@@ -164,10 +165,10 @@ export function createStyleCustomPanel(root: HTMLElement, onclose?: () => void) 
     root.querySelector("#ehvp-style-custom")?.remove();
     const styleElement = document.createElement("style");
     styleElement.id = "ehvp-style-custom";
-    conf.customStyle = css;
+    ADAPTER.conf.customStyle = css;
+    saveConf({ customStyle: css });
     styleElement.innerHTML = css;
     root.appendChild(styleElement);
-    saveConf(conf);
   };
 
   styleCustomConfirm.addEventListener("click", () => applyStyleCustom(styleCustomInput.value));
@@ -310,4 +311,23 @@ function displayTextPreset(index: number): DisplayText {
     },
   ];
   return list[index] ?? {};
+}
+
+const DEFAULT_DISPLAY_TEXT: DisplayText = {
+  entry: icons.moonViewCeremony,
+  collapse: i18n.collapse.get(),
+  fin: "FIN",
+  autoPagePlay: i18n.autoPagePlay.get(),
+  autoPagePause: i18n.autoPagePause.get(),
+  config: i18n.config.get(),
+  download: i18n.download.get(),
+  chapters: i18n.chapters.get(),
+  filter: i18n.filter.get(),
+  pagination: "PAGE",
+  continuous: "CONT",
+  horizontal: "HORI"
+};
+
+export function getDisplayText(): DisplayText {
+  return { ...DEFAULT_DISPLAY_TEXT, ...ADAPTER.conf.displayText };
 }

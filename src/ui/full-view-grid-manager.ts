@@ -1,4 +1,3 @@
-import { conf } from "../config";
 import EBUS from "../event-bus";
 import { Debouncer } from "../utils/debouncer";
 import queryCSSRules from "../utils/query-cssrules";
@@ -6,6 +5,7 @@ import { evLog } from "../utils/ev-log";
 import { Elements } from "./html";
 import { BigImageFrameManager } from "./big-image-frame-manager";
 import { IMGFetcher } from "../img-fetcher";
+import { ADAPTER } from "../platform/adapt";
 
 type E = {
   node: IMGFetcher,
@@ -19,6 +19,7 @@ abstract class Layout {
   abstract resize(allNodes: E[]): void;
   abstract resizedNode(node: HTMLElement, pending: HTMLElement[]): number[];
   abstract visibleRange(container: HTMLElement, children: HTMLElement[]): [HTMLElement, HTMLElement];
+  abstract remove(root: HTMLElement): void;
 }
 
 export class FullViewGridManager {
@@ -29,10 +30,10 @@ export class FullViewGridManager {
   layout: Layout;
   resizedNodesPending: HTMLElement[] = [];
   debouncer: Debouncer;
-  constructor(HTML: Elements, BIFM: BigImageFrameManager, flowVision: boolean = false) {
+  constructor(HTML: Elements, BIFM: BigImageFrameManager) {
     this.root = HTML.fullViewGrid;
     this.debouncer = new Debouncer();
-    if (flowVision) {
+    if (ADAPTER.conf.gridMode === "flow") {
       this.layout = new FlowVisionLayout(this.root);
     } else {
       this.layout = new GRIDLayout(this.root, HTML.styleSheet);
@@ -55,7 +56,7 @@ export class FullViewGridManager {
       if (imf.chapterIndex !== this.chapterIndex) return;
       if (!imf.node.root) return;
       let scrollTo = 0;
-      if (flowVision) {
+      if (ADAPTER.conf.gridMode === "flow") {
         scrollTo = imf.node.root.parentElement!.offsetTop - window.screen.availHeight / 3;
       } else {
         scrollTo = imf.node.root.offsetTop - window.screen.availHeight / 3;
@@ -79,7 +80,16 @@ export class FullViewGridManager {
         EBUS.emit("toggle-main-view", false);
       }
     });
-    EBUS.subscribe("fvg-flow-vision-resize", () => this.layout.resize(this.queue));
+    EBUS.subscribe("fvg-layout-change", () => {
+      this.layout.remove(this.root);
+      if (ADAPTER.conf.gridMode === "flow") {
+        this.layout = new FlowVisionLayout(this.root);
+      } else {
+        this.layout = new GRIDLayout(this.root, HTML.styleSheet);
+      }
+      this.layout.resize(this.queue);
+    });
+    EBUS.subscribe("fvg-layout-resize", () => this.layout.resize(this.queue));
     EBUS.subscribe("imf-resize", (imf) => this.resizedNodes(imf));
   }
   resizedNodes(imf: IMGFetcher) {
@@ -155,9 +165,11 @@ class GRIDLayout extends Layout {
   reset(): void {
     this.root.innerHTML = "";
   }
-  resize(): void {
+  resize(allNodes: E[]): void {
     const rule = queryCSSRules(this.style, ".fvg-grid");
-    if (rule) rule.style.gridTemplateColumns = `repeat(${conf.colCount}, minmax(10px, 1fr))`;
+    if (rule) rule.style.gridTemplateColumns = `repeat(${ADAPTER.conf.colCount}, minmax(10px, 1fr))`;
+    this.root.innerHTML = "";
+    this.append(allNodes);
   }
   resizedNode(_node: HTMLElement, pending: HTMLElement[]): number[] {
     return pending.map((_, i) => i);
@@ -168,7 +180,7 @@ class GRIDLayout extends Layout {
     let first: HTMLElement | undefined;
     let last: HTMLElement | undefined;
     let overRow = 0;
-    for (let i = 0; i < children.length; i += conf.colCount) {
+    for (let i = 0; i < children.length; i += ADAPTER.conf.colCount) {
       const rect = children[i].getBoundingClientRect();
       const visible = rect.top + rect.height >= 0 && rect.top <= vh;
       if (visible) {
@@ -180,12 +192,15 @@ class GRIDLayout extends Layout {
         overRow++;
       }
       if (overRow >= 2) {
-        last = children[Math.min(children.length - 1, i + conf.colCount)];
+        last = children[Math.min(children.length - 1, i + ADAPTER.conf.colCount)];
         break;
       }
     }
     last = last ?? children[children.length - 1];
     return [first ?? last, last];
+  }
+  remove(root: HTMLElement) {
+    root.innerHTML = "";
   }
 }
 
@@ -215,7 +230,7 @@ class FlowVisionLayout extends Layout {
     this.resizeObserver.observe(this.root);
   }
   initBaseline() {
-    return { height: conf.rowHeight, columns: conf.colCount, gap: 8, };
+    return { height: ADAPTER.conf.rowHeight, columns: ADAPTER.conf.colCount, gap: 8, };
   }
   createRow(lastRowHeight?: number): HTMLElement {
     const container = document.createElement("div");
@@ -368,5 +383,8 @@ class FlowVisionLayout extends Layout {
     }
     last = last ?? children[children.length - 1].lastElementChild as HTMLElement;
     return [first ?? last, last];
+  }
+  remove(root: HTMLElement) {
+    root.innerHTML = "";
   }
 }

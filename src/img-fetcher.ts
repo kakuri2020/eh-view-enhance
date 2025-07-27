@@ -1,6 +1,7 @@
-import { conf, transient } from "./config";
+import { transient } from "./config";
 import EBUS from "./event-bus";
 import ImageNode from "./img-node";
+import { ADAPTER } from "./platform/adapt";
 import { Matcher, OriginMeta } from "./platform/platform";
 import { Debouncer } from "./utils/debouncer";
 import { evLog } from "./utils/ev-log";
@@ -239,7 +240,7 @@ export class IMGFetcher {
         debouncer.addEvent("XHR_TIMEOUT", () => {
           this.abort();
           reject(new Error("timeout"));
-        }, conf.timeout * 1000);
+        }, ADAPTER.conf.timeout * 1000);
       };
       try {
         this.abortSignal = xhrWapper(imgFetcher.node.originSrc!, "blob", {

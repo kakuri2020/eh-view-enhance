@@ -63,7 +63,8 @@ export interface Events {
   "toggle-main-view": (open?: boolean) => void;
   "toggle-auto-play": () => void;
   "start-download": (cb: () => void) => void;
-  "fvg-flow-vision-resize": () => void;
+  "fvg-layout-resize": () => void;
+  "fvg-layout-change": () => void;
   "imf-resize": (imf: IMGFetcher) => void;
   "filter-update-all-tags": () => void;
 }

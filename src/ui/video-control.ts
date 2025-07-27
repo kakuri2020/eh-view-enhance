@@ -1,4 +1,5 @@
-import { conf, saveConf } from "../config";
+import { saveConf } from "../config";
+import { ADAPTER } from "../platform/adapt";
 import { evLog } from "../utils/ev-log";
 import onMouse from "../utils/progress-bar";
 import q from "../utils/query-element";
@@ -86,8 +87,8 @@ export class VideoControl {
     this.ui.duration.textContent = secondsToTime(max);
     if (onlyState) return;
     this.ui.playBTN.innerHTML = this.paused ? PLAY_ICON : PAUSE_ICON;
-    this.ui.volumeBTN.innerHTML = conf.muted ? MUTED_ICON : VOLUME_ICON;
-    (this.ui.volumeProgress.firstElementChild as HTMLElement).style.width = `${conf.volume || 30}%`;
+    this.ui.volumeBTN.innerHTML = ADAPTER.conf.muted ? MUTED_ICON : VOLUME_ICON;
+    (this.ui.volumeProgress.firstElementChild as HTMLElement).style.width = `${ADAPTER.conf.volume || 30}%`;
   }
 
   public attach(element: HTMLVideoElement) {
@@ -110,8 +111,8 @@ export class VideoControl {
       element.play();
     };
     // element.loop = true;
-    element.muted = conf.muted || false;
-    element.volume = Math.min(1, (conf.volume || 30) / 100);
+    element.muted = ADAPTER.conf.muted || false;
+    element.volume = Math.min(1, (ADAPTER.conf.volume || 30) / 100);
 
     if (!this.paused) {
       element.play();
@@ -136,9 +137,9 @@ export class VideoControl {
     this.ui.volumeBTN.addEventListener("click", () => {
       const vid = this.getVideoElement();
       if (!vid) return;
-      conf.muted = !conf.muted;
-      vid.muted = conf.muted;
-      saveConf(conf);
+      ADAPTER.conf.muted = !ADAPTER.conf.muted;
+      vid.muted = ADAPTER.conf.muted;
+      saveConf({ muted: vid.muted });
       this.flushUI(state);
     }, { signal: this.abort.signal });
 
@@ -153,9 +154,9 @@ export class VideoControl {
     onMouse(this.ui.volumeProgress, (percent) => {
       const vid = this.getVideoElement();
       if (!vid) return;
-      conf.volume = Math.min(100, percent);
-      saveConf(conf);
-      vid.volume = Math.min(1, conf.volume / 100);
+      ADAPTER.conf.volume = Math.min(100, percent);
+      vid.volume = Math.min(1, ADAPTER.conf.volume / 100);
+      saveConf({ volume: ADAPTER.conf.volume });
       this.flushUI(state);
     }, this.abort.signal);
   }

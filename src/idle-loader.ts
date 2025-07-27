@@ -1,8 +1,8 @@
-import { conf } from "./config";
 import { CherryPick } from "./download/downloader";
 import EBUS from "./event-bus";
 import { IMGFetcherQueue } from "./fetcher-queue";
 import { FetchState } from "./img-fetcher";
+import { ADAPTER } from "./platform/adapt";
 import { Debouncer } from "./utils/debouncer";
 import { evLog } from "./utils/ev-log";
 
@@ -23,7 +23,7 @@ export class IdleLoader {
     this.processingIndexList = [0];
     this.maxWaitMS = 1000;
     this.minWaitMS = 300;
-    this.autoLoad = conf.autoLoad;
+    this.autoLoad = ADAPTER.conf.autoLoad;
     this.debouncer = new Debouncer();
     EBUS.subscribe("ifq-on-do", (currIndex, _, downloading) => !downloading && this.abort(currIndex));
     EBUS.subscribe("imf-on-finished", (index) => {
@@ -37,7 +37,7 @@ export class IdleLoader {
     // if not downloading, abort idle loader, if chapter index < 0, mean back to the chapters selection, then abort without restart
     EBUS.subscribe("pf-change-chapter", (index) => !this.queue.downloading?.() && this.abort(index > 0 ? 0 : undefined));
     window.addEventListener("focus", () => {
-      if (conf.autoLoadInBackground) return;
+      if (ADAPTER.conf.autoLoadInBackground) return;
       this.debouncer.addEvent("Idle-Load-on-focus", () => {
         console.log("[ IdleLoader ] window focus, document.hidden:", document.hidden);
         if (document.hidden) return;
@@ -57,7 +57,7 @@ export class IdleLoader {
   start() {
     if (!this.autoLoad) return;
     // FIXME: document.hidden abort idle loader, if downloading, after refocus, it will not resume
-    if (document.hidden && !conf.autoLoadInBackground) return;
+    if (document.hidden && !ADAPTER.conf.autoLoadInBackground) return;
     // processingIndexList.length === 0 means idle loader aborted
     if (this.processingIndexList.length === 0) return;
     if (this.queue.length === 0) return;
@@ -143,7 +143,7 @@ export class IdleLoader {
       this.processingIndexList = [newIndex];
       this.checkProcessingIndex();
       this.start();
-    }, delayRestart || conf.restartIdleLoader);
+    }, delayRestart || ADAPTER.conf.restartIdleLoader);
   }
 }
 

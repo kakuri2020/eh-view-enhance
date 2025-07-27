@@ -1,11 +1,10 @@
-import { conf, saveConf } from "./config";
+import { saveConf } from "./config";
 import { Downloader } from "./download/downloader";
 import EBUS from "./event-bus";
 import { IMGFetcherQueue } from "./fetcher-queue";
 import { IdleLoader } from "./idle-loader";
 import { PageFetcher } from "./page-fetcher";
-import { adaptMatcher } from "./platform/adapt";
-import { Matcher } from "./platform/platform";
+import { ADAPTER } from "./platform/adapt";
 import { initEvents } from "./ui/event";
 import { FullViewGridManager } from "./ui/full-view-grid-manager";
 import { createHTML, addEventListeners, showMessage } from "./ui/html";
@@ -19,7 +18,8 @@ import { Filter } from "./filter";
 
 type DestoryFunc = () => Promise<void>;
 
-function main(MATCHER: Matcher<any>, autoOpen: boolean, flowVision: boolean): DestoryFunc {
+function setup(): DestoryFunc {
+  const MATCHER = ADAPTER.matcher!.constructor();
   const FL: Filter = new Filter();
   const HTML = createHTML(FL);
   [HTML.fullViewGrid, HTML.bigImageFrame].forEach(e => revertMonkeyPatch(e));
@@ -32,7 +32,7 @@ function main(MATCHER: Matcher<any>, autoOpen: boolean, flowVision: boolean): De
   // UI Manager
   const PH: PageHelper = new PageHelper(HTML, () => PF.chapters, () => DL.downloading);
   const BIFM: BigImageFrameManager = new BigImageFrameManager(HTML, (index) => PF.chapters[index]);
-  new FullViewGridManager(HTML, BIFM, flowVision);
+  new FullViewGridManager(HTML, BIFM);
 
   const events = initEvents(HTML, BIFM, IFQ, IL, PH);
   addEventListeners(events, HTML, BIFM, DL, PH);
@@ -49,16 +49,16 @@ function main(MATCHER: Matcher<any>, autoOpen: boolean, flowVision: boolean): De
     HTML.pageLoading.style.display = "none";
     IL.processingIndexList = [0];
     IL.start();
-    if (conf.autoEnterBig || BIFM.visible) {
+    if (ADAPTER.conf.autoEnterBig || BIFM.visible) {
       const imf = IFQ[BIFM.getPageNumber()];
       if (imf) BIFM.show(imf);
     }
   };
 
-  if (conf.first) {
+  if (ADAPTER.conf.first) {
     events.showGuideEvent();
-    conf.first = false;
-    saveConf(conf);
+    ADAPTER.conf.first = false;
+    saveConf({ first: false });
   }
   // 入口Entry
   EBUS.subscribe("start-download", (cb) => {
@@ -89,7 +89,7 @@ function main(MATCHER: Matcher<any>, autoOpen: boolean, flowVision: boolean): De
     }
   }
   EBUS.subscribe("toggle-main-view", entry);
-  if (conf.autoOpen && autoOpen) {
+  if (ADAPTER.conf.autoOpen) {
     HTML.entryBTN.setAttribute("data-stage", "open");
     entry(true);
   }
@@ -108,7 +108,7 @@ function main(MATCHER: Matcher<any>, autoOpen: boolean, flowVision: boolean): De
 
 let destoryFunc: DestoryFunc | undefined;
 const debouncer = new Debouncer();
-function reMain() {
+function start() {
   debouncer.addEvent("LOCATION-CHANGE", () => {
     const newStart = () => {
       if (window.self !== window.top) {
@@ -116,10 +116,9 @@ function reMain() {
         return;
       }
       if (document.querySelector(".ehvp-base")) return;
-      const [matcher, autoOpen, flowVision] = adaptMatcher(window.location.href);
-      if (matcher) {
-        destoryFunc = main(matcher, autoOpen, flowVision)
-      }
+      ADAPTER.ready.then(() => {
+        destoryFunc = setup()
+      });
     };
     if (destoryFunc) {
       destoryFunc().then(newStart);
@@ -134,13 +133,13 @@ function reMain() {
 setTimeout(() => {
   const oldPushState = history.pushState;
   history.pushState = function pushState(...args: any) {
-    reMain();
+    start();
     return oldPushState.apply(this, args);
   };
   const oldReplaceState = history.replaceState;
   history.replaceState = function replaceState(...args: any) {
     return oldReplaceState.apply(this, args);
   }
-  window.addEventListener("popstate", reMain);
-  reMain();
+  window.addEventListener("popstate", start);
+  start();
 }, 300);

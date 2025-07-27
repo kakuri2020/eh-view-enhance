@@ -25,7 +25,6 @@ export class Result<T> {
 };
 
 export interface Matcher<P> {
-  name(): string;
   /**
    * step 0: in some site, the gallery is divided into chapters
    */
@@ -45,7 +44,6 @@ export interface Matcher<P> {
 
   galleryMeta(chapter: Chapter): GalleryMeta;
   title(chapter: Chapter[]): string;
-  workURLs(): RegExp[];
   processData(data: Uint8Array, contentType: string, node: ImageNode): Promise<[Uint8Array, string]>;
   headers(): Record<string, string>;
   appendNewChapters(url: string, old: Chapter[]): Promise<Chapter[]>;
@@ -57,7 +55,6 @@ export abstract class BaseMatcher<P> implements Matcher<P> {
     return [new Chapter(0, "Default", window.location.href)];
   }
 
-  abstract name(): string;
   abstract fetchPagesSource(source: Chapter): AsyncGenerator<Result<P>>;
   abstract parseImgNodes(pageSource: P, chapterID?: number): Promise<ImageNode[]>;
   abstract fetchOriginMeta(node: ImageNode, retry: boolean, chapterID?: number): Promise<OriginMeta>;
@@ -69,12 +66,6 @@ export abstract class BaseMatcher<P> implements Matcher<P> {
 
   galleryMeta(_chapter: Chapter): GalleryMeta {
     return new GalleryMeta(window.location.href, document.title || "unknown");
-  }
-
-  abstract workURL(): RegExp;
-
-  workURLs(): RegExp[] {
-    return [this.workURL()];
   }
 
   async processData(data: Uint8Array, contentType: string, _node: ImageNode): Promise<[Uint8Array, string]> {

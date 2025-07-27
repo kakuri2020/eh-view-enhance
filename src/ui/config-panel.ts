@@ -1,4 +1,5 @@
-import { ConfigBooleanType, ConfigItem, ConfigItems, ConfigNumberType, ConfigSelectType, conf } from "../config";
+import { ConfigBooleanType, ConfigItem, ConfigItems, ConfigNumberType, ConfigSelectType, defaultConf, resetConf } from "../config";
+import { ADAPTER } from "../platform/adapt";
 import { I18nValue, i18n } from "../utils/i18n";
 import q from "../utils/query-element";
 import relocateElement from "../utils/relocate-element";
@@ -7,10 +8,11 @@ import { Events } from "./event";
 export class ConfigPanel {
 
   panel: HTMLElement;
-  btn: HTMLElement;
+
+  configSelect: HTMLElement;
+
   constructor(root: HTMLElement) {
     this.panel = q("#config-panel", root);
-    this.btn = q("#config-panel-btn", root);
     // tooltip hovering
     this.panel.querySelectorAll<HTMLElement>(".p-tooltip").forEach(element => {
       const child = element.querySelector<HTMLElement>(".p-tooltiptext");
@@ -21,9 +23,54 @@ export class ConfigPanel {
       });
       element.addEventListener("mouseleave", () => child.style.display = "none");
     });
+
+    this.configSelect = q("#config-a-select", root);
   }
 
   initEvents(events: Events) {
+    this.flushConfigItems(events);
+
+    this.configSelect.addEventListener("click", (event) => {
+      const value = (event.target as HTMLElement).getAttribute("data-value");
+      if (value) {
+        ADAPTER.conf.selectedSiteNameConfig = value === "global" ? undefined : value;
+        console.log("ADAPTER.conf.selectedSiteNameConfig: ", ADAPTER.conf.selectedSiteNameConfig);
+        Array.from(this.configSelect.querySelectorAll(".b-main-option")).forEach((element) => {
+          if (element.getAttribute("data-value") === ADAPTER.conf.selectedSiteNameConfig) {
+            element.classList.add("b-main-option-selected");
+          } else if (element.getAttribute("data-value") === "global" && ADAPTER.conf.selectedSiteNameConfig === undefined) {
+            element.classList.add("b-main-option-selected");
+          } else {
+            element.classList.remove("b-main-option-selected");
+          }
+        });
+        this.flushConfigItems(events);
+      }
+    });
+
+    q("#show-guide-element", this.panel).addEventListener("click", events.showGuideEvent);
+    q("#show-keyboard-custom-element", this.panel).addEventListener("click", events.showKeyboardCustomEvent);
+    q("#show-site-profiles-element", this.panel).addEventListener("click", events.showSiteProfilesEvent);
+    q("#show-style-custom-element", this.panel).addEventListener("click", events.showStyleCustomEvent);
+    q("#show-action-custom-element", this.panel).addEventListener("click", events.showActionCustomEvent);
+    q("#reset-config-element", this.panel).addEventListener("click", () => {
+      const selectedConfig = ADAPTER.conf.selectedSiteNameConfig;
+      resetConf(selectedConfig);
+      ADAPTER.conf = ADAPTER.globalConf = selectedConfig ? ADAPTER.globalConf : defaultConf();
+      ADAPTER.conf.selectedSiteNameConfig = selectedConfig;
+      this.flushConfigItems(events);
+    });
+  }
+
+  flushConfigItems(events: Events) {
+    const header = q("#config-panel-header", this.panel);
+    Array.from(this.panel.querySelectorAll<HTMLElement>(".config-panel-item")).forEach(elem => elem.remove());
+    const nodes = ConfigItems.map(createOption).map(str => {
+      const template = document.createElement("template");
+      template.innerHTML = str.trim();
+      return template.content.firstElementChild!;
+    });
+    header.after(...nodes);
     // modify config event
     ConfigItems.forEach(item => {
       switch (item.typ) {
@@ -50,10 +97,15 @@ export class ConfigPanel {
   }
 
   static html() {
-    const configItemStr = ConfigItems.map(createOption).join("");
     return `
 <div id="config-panel" class="p-panel p-config p-collapse">
-    ${configItemStr}
+    <div id="config-panel-header" style="position: sticky;border: 1px solid black;grid-column-start: 1;grid-column-end: 11;padding: 0px 0.3em;top: 0;z-index: 1;background-color: #33333390">
+      <div id="config-a-select"
+      ><a class="b-main-option clickable ${ADAPTER.conf.selectedSiteNameConfig === undefined ? "b-main-option-selected" : ""}" data-value="global">${i18n.global.get()}</a
+      ><a class="b-main-option clickable ${ADAPTER.conf.selectedSiteNameConfig === ADAPTER.matcher!.name ? "b-main-option-selected" : ""}" data-value="${ADAPTER.matcher!.name}">${ADAPTER.matcher!.name}</a></div>
+    </div>
+
+    <!-- config items will place here -->
     <div style="grid-column-start: 1; grid-column-end: 11; padding-left: 5px;">
         <label class="p-label">
             <span>${i18n.dragToMove.get()}:</span>
@@ -85,6 +137,8 @@ function createOption(item: ConfigItem) {
     display = item.displayInSite.test(location.href);
   }
 
+  const conf = ADAPTER.conf.selectedSiteNameConfig ? ADAPTER.conf : ADAPTER.globalConf;
+
   let input = "";
   switch (item.typ) {
     case "boolean":
@@ -105,5 +159,5 @@ function createOption(item: ConfigItem) {
       break;
   }
   const [start, end] = item.gridColumnRange ? item.gridColumnRange : [1, 11];
-  return `<div style="grid-column-start: ${start}; grid-column-end: ${end}; padding-left: 5px;${display ? "" : " display: none;"}"><label class="p-label"><span><span>${i18nValue.get()}</span><span class="p-tooltip">${i18nValueTooltip ? " ?:" : " :"}<span class="p-tooltiptext">${i18nValueTooltip?.get() || ""}</span></span></span>${input}</label></div>`;
+  return `<div class="config-panel-item" style="grid-column-start: ${start}; grid-column-end: ${end}; padding-left: 5px;${display ? "" : " display: none;"}"><label class="p-label"><span><span>${i18nValue.get()}</span><span class="p-tooltip">${i18nValueTooltip ? " ?:" : " :"}<span class="p-tooltiptext">${i18nValueTooltip?.get() || ""}</span></span></span>${input}</label></div>`;
 }

@@ -1,9 +1,10 @@
-import { conf, saveConf } from "../config";
+import { saveConf } from "../config";
 import { i18n } from "../utils/i18n";
 import parseKey from "../utils/keyboard";
 import { KeyboardDesc, KeyboardEvents, KeyboardInBigImageModeId, KeyboardInFullViewGridId, KeyboardInMainId } from "./event";
+import { ADAPTER } from "../platform/adapt";
 
-type Category = keyof typeof conf.keyboards;
+type Category = keyof typeof ADAPTER.conf.keyboards;
 type ID = KeyboardInBigImageModeId;
 type IDKeys = { [key in ID]?: string[] }
 type IDDesc = { [key in ID]: KeyboardDesc }
@@ -19,14 +20,14 @@ export default function createKeyboardCustomPanel(keyboardEvents: KeyboardEvents
     button.before(element);
     element.querySelector(".ehvp-custom-btn")!.addEventListener("click", (event) => {
       // try to remove key from conf
-      const keys = (conf.keyboards[category] as IDKeys)[id];
+      const keys = (ADAPTER.conf.keyboards[category] as IDKeys)[id];
       if (keys && keys.length > 0) {
         const index = keys.indexOf(key);
         if (index !== -1) keys.splice(index, 1);
         if (keys.length === 0) {
-          delete (conf.keyboards[category] as IDKeys)[id];
+          delete (ADAPTER.conf.keyboards[category] as IDKeys)[id];
         }
-        saveConf(conf);
+        saveConf({ keyboards: ADAPTER.conf.keyboards });
       }
       (event.target as HTMLElement).parentElement!.remove();
       // restore default keys
@@ -105,7 +106,7 @@ export default function createKeyboardCustomPanel(keyboardEvents: KeyboardEvents
   fullPanel.querySelectorAll<HTMLElement>(".ehvp-add-keyboard-btn").forEach(button => {
     const category = button.getAttribute("data-cate") as Category;
     const id = button.getAttribute("data-id") as ID;
-    let keys = (conf.keyboards[category] as IDKeys)[id];
+    let keys = (ADAPTER.conf.keyboards[category] as IDKeys)[id];
     if (keys === undefined || keys.length === 0) {
       keys = (keyboardEvents[category] as IDDesc)[id].defaultKeys;
     }
@@ -117,12 +118,12 @@ export default function createKeyboardCustomPanel(keyboardEvents: KeyboardEvents
         if (checkKey === "alt" || checkKey === "shift" || checkKey === "control" || checkKey === "meta") return;
       }
       const key = parseKey(event);
-      if ((conf.keyboards[category] as IDKeys)[id] !== undefined) {
-        (conf.keyboards[category] as IDKeys)[id]!.push(key);
+      if ((ADAPTER.conf.keyboards[category] as IDKeys)[id] !== undefined) {
+        (ADAPTER.conf.keyboards[category] as IDKeys)[id]!.push(key);
       } else {
-        (conf.keyboards[category] as IDKeys)[id] = keys!.concat(key);
+        (ADAPTER.conf.keyboards[category] as IDKeys)[id] = keys!.concat(key);
       }
-      saveConf(conf);
+      saveConf({ keyboards: ADAPTER.conf.keyboards });
       addKeyboardDescElement(button, category, id, key);
       button.textContent = "+";
       button.removeAttribute("d-pressing");

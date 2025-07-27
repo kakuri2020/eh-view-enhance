@@ -1,11 +1,11 @@
 import { GM_xmlhttpRequest } from "$";
-import { conf } from "./config";
 import { GalleryMeta } from "./download/gallery-meta";
 import EBUS from "./event-bus";
 import { IMGFetcherQueue } from "./fetcher-queue";
 import { Filter } from "./filter";
 import { IMGFetcher } from "./img-fetcher";
 import ImageNode, { NodeAction } from "./img-node";
+import { ADAPTER } from "./platform/adapt";
 import { Matcher, Result } from "./platform/platform";
 import { Debouncer } from "./utils/debouncer";
 import { evLog } from "./utils/ev-log";
@@ -110,9 +110,9 @@ export class PageFetcher {
   async init() {
     this.beforeInit?.();
     try {
-      if (conf.imgNodeActions.length > 0) {
+      if (ADAPTER.conf.imgNodeActions.length > 0) {
         const AsyncFunction = async function() { }.constructor;
-        this.nodeActionDesc = conf.imgNodeActions.filter(a => {
+        this.nodeActionDesc = ADAPTER.conf.imgNodeActions.filter(a => {
           if (!a.workon) return true;
           const regexp = new RegExp(a.workon);
           return regexp.exec(window.location.href);

@@ -1,8 +1,9 @@
 import { Debouncer } from "./utils/debouncer";
 import { FetchState, IMGFetcher } from "./img-fetcher";
-import { Oriented, conf } from "./config";
+import { Oriented } from "./config";
 import EBUS from "./event-bus";
 import { CherryPick } from "./download/downloader";
+import { ADAPTER } from "./platform/adapt";
 
 export class IMGFetcherQueue extends Array<IMGFetcher> {
   executableQueue: number[];
@@ -87,7 +88,7 @@ export class IMGFetcherQueue extends Array<IMGFetcher> {
     // delay 300ms to avoid too many requests, if user scroll quickly on big image, it will cause too many requests
     this.debouncer.addEvent("IFQ-EXECUTABLE", () => {
       console.log("IFQ-EXECUTABLE: ", this.executableQueue);
-      Promise.all(this.executableQueue.splice(0, conf.paginationIMGCount).map(imfIndex => this[imfIndex].start()))
+      Promise.all(this.executableQueue.splice(0, ADAPTER.conf.paginationIMGCount).map(imfIndex => this[imfIndex].start()))
         .then(() => {
           const picked = this.cherryPick?.(this.chapterIndex);
           this.executableQueue.filter(i => !picked || picked.picked(i)).forEach(imfIndex => this[imfIndex].start());
@@ -139,7 +140,7 @@ export class IMGFetcherQueue extends Array<IMGFetcher> {
     if (oriented === "next") ret = index < this.length;
     if (oriented === "prev") ret = index > -1;
     if (!ret) return false;
-    if (count < conf.threads + conf.paginationIMGCount - 1) return true;
+    if (count < ADAPTER.conf.threads + ADAPTER.conf.paginationIMGCount - 1) return true;
     return false;
   }
 
