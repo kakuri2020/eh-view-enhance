@@ -411,7 +411,7 @@ export const ConfigItems: ConfigItem[] = [
   { key: "pixivJustCurrPage", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /pixiv.net/ },
   { key: "pixivAscendWorks", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /pixiv.net/ },
   { key: "reverseMultipleImagesPost", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /(x.com|twitter.com)\// },
-  { key: "excludeVideo", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /(x.com|twitter.com|kemono.su)\// },
+  { key: "excludeVideo", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /(x.com|twitter.com|kemono.cr)\// },
   {
     key: "readMode", typ: "select", options: [
       { value: "pagination", display: "Pagination" },

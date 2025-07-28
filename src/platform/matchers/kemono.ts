@@ -42,9 +42,14 @@ abstract class KemonoListAbstract implements KemonoList {
     page = isNaN(page) ? 0 : page;
     const query = url.searchParams.get("q");
     while (true) {
-      const ret = await window.fetch(this.getURL(page, query)).then(res => res.json());
+      const ret = await window.fetch(this.getURL(page, query)).then(res => res.json()).catch(Error);
+      if (ret instanceof Error) {
+        yield Result.err(ret);
+        continue;
+      }
       if (ret.error) {
         yield Result.err(new Error(ret.error));
+        continue;
       }
       const results = this.getPosts(ret);
       if (!results || results.length === 0) break;
@@ -68,9 +73,13 @@ abstract class KemonoListAbstract implements KemonoList {
           }
         })
       }
-      yield Result.ok(results);
+      const resultLen = results.length;
+      // yield Result.ok(results);
+      while (results.length > 0) {
+        yield Result.ok(results.splice(0, 10));
+      }
       // offset not multiple of 150 or too large
-      if (results.length < 50) break;
+      if (resultLen < 50) break;
     }
   }
 
@@ -82,8 +91,7 @@ abstract class KemonoListAbstract implements KemonoList {
 
 class KemonoListArtist extends KemonoListAbstract {
   getURL(pages: number, query: string | null): string {
-    const url = new URL(window.location.href);
-    const u = new URL(`${url.origin}/api/v1/${url.pathname}/posts-legacy`);
+    const u = new URL(`${window.location.origin}/api/v1${window.location.pathname}/posts-legacy`);
     if (pages > 0) {
       u.searchParams.set("o", pages.toString());
     }
@@ -106,8 +114,7 @@ class KemonoListPosts extends KemonoListAbstract {
     return res.posts;
   }
   getURL(pages: number, query: string | null): string {
-    const url = new URL(window.location.href);
-    const u = new URL(`${url.origin}/api/v1/${url.pathname}`);
+    const u = new URL(`${window.location.origin}/api/v1${window.location.pathname}`);
     if (pages > 0) {
       u.searchParams.set("o", pages.toString());
     }
@@ -127,7 +134,7 @@ class KemonoListSinglePost extends KemonoListAbstract {
     return [];
   }
   getURL(): string {
-    return `${window.location.origin}/api/v1/${window.location.pathname}`;
+    return `${window.location.origin}/api/v1${window.location.pathname}`;
   }
   getList(response: any): any[] {
     return [...(response.previews ?? []), ...(response.attachments ?? [])];
@@ -157,8 +164,8 @@ class KemonoMatcher extends BaseMatcher<KemonoResult[]> {
   async parseImgNodes(results: KemonoResult[]): Promise<ImageNode[]> {
     const nodes = [];
     const newImageNode = (id: string, user: string, service: string, path: string, name: string, server: string) => {
-      const thumb = `https://img.kemono.su/thumbnail/data/${path}`;
-      const href = `https://kemono.su/${service}/user/${user}/post/${id}`;
+      const thumb = `https://img.kemono.cr/thumbnail/data/${path}`;
+      const href = `${window.location.origin}/${service}/user/${user}/post/${id}`;
       let src = server ? `${server}/data/${path}?f=${name}` : undefined;
       const node = new ImageNode(thumb, href, name, undefined, src);
       if (path.indexOf(".mp4") > 1) {
@@ -228,8 +235,8 @@ function kemonoInfoPathMap(list: any[]): Map<string, { name: string, server: str
 ADAPTER.addSetup({
   name: "Kemono",
   workURLs: [
-    /kemono.su\/(\w+\/user\/\w+(\/post\/\w+)?|posts)(\?\w=.*)?$/
+    /kemono.cr\/(\w+\/user\/\w+(\/post\/\w+)?|posts)(\?\w=.*)?$/
   ],
-  match: ["https://kemono.su/*"],
+  match: ["https://kemono.cr/*"],
   constructor: () => new KemonoMatcher(),
 });
