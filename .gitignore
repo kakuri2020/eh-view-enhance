@@ -11,6 +11,7 @@ node_modules
 dist
 *.local
 *.lock
+!flake.lock
 
 # Editor directories and files
 .vscode/*
