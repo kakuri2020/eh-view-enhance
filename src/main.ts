@@ -16,6 +16,11 @@ import { sleep } from "./utils/sleep";
 import { evLog } from "./utils/ev-log";
 import { Filter } from "./filter";
 
+// Dynamically import the modules under ./platform/matchers, in which ADAPTER.addSetup will be executed
+const modules = import.meta.glob('./platform/matchers/*.ts', { eager: true });
+for (const path in modules) modules[path];
+
+
 type DestoryFunc = () => Promise<void>;
 
 function setup(): DestoryFunc {

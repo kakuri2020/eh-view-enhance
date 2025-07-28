@@ -41,9 +41,4 @@ export class Adapter {
   }
 }
 
-const modules = import.meta.glob('./matchers/*.ts');
-for (const path in modules) {
-  modules[path]().then(() => { });
-}
-
 export const ADAPTER = new Adapter();
