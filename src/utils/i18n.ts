@@ -575,7 +575,7 @@ pero desactivará la lupa y la capacidad de arrastrar y mover imágenes.`,
   global: [
     'Global',
     '全局',
-    'Global',
+    '글로벌',
     'Global',
   ],
   controlBarStyleTooltip: [

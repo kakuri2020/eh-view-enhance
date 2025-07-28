@@ -55,10 +55,11 @@ export class ConfigPanel {
     q("#show-action-custom-element", this.panel).addEventListener("click", events.showActionCustomEvent);
     q("#reset-config-element", this.panel).addEventListener("click", () => {
       const selectedConfig = ADAPTER.conf.selectedSiteNameConfig;
-      resetConf(selectedConfig);
-      ADAPTER.conf = ADAPTER.globalConf = selectedConfig ? ADAPTER.globalConf : defaultConf();
-      ADAPTER.conf.selectedSiteNameConfig = selectedConfig;
-      this.flushConfigItems(events);
+      if (resetConf(selectedConfig)) {
+        ADAPTER.conf = ADAPTER.globalConf = selectedConfig ? ADAPTER.globalConf : defaultConf();
+        ADAPTER.conf.selectedSiteNameConfig = selectedConfig;
+        this.flushConfigItems(events);
+      }
     });
   }
 

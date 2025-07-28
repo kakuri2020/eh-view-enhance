@@ -307,13 +307,15 @@ function patchConfig(cf: Config): Config | null {
 }
 
 export function resetConf(name?: string) {
-  if (confirm(`${i18n.resetConfig.get()}${name ? ("in " + name) : ""} ?`)) {
+  const ok = confirm(`${i18n.resetConfig.get()}${name ? (" On " + name) : " On " + i18n.global.get()} ?`);
+  if (ok) {
     if (name) {
       storage.setItem(getConfigKey(name), "");
     } else {
       saveConf(defaultConf());
     }
   };
+  return ok;
 }
 export function saveConf(c: SiteConfig, name?: string) {
   const configKey = getConfigKey(name);
