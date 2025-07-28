@@ -1,5 +1,5 @@
 import ImageNode from "../../img-node";
-import { isImage, isVideo } from "../../utils/media_helper";
+import { isImage, isVideo } from "../../utils/media-helper";
 import { batchFetch } from "../../utils/query";
 import { ADAPTER } from "../adapt";
 import { BaseMatcher, OriginMeta, Result } from "../platform"

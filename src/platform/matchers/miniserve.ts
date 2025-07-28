@@ -1,6 +1,6 @@
 import ImageNode from "../../img-node";
 import { Chapter } from "../../page-fetcher";
-import { isImage, isVideo } from "../../utils/media_helper";
+import { isImage, isVideo } from "../../utils/media-helper";
 import { ADAPTER } from "../adapt";
 import { BaseMatcher, OriginMeta, Result } from "../platform";
 import * as zip_js from "@zip.js/zip.js";
